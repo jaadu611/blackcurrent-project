@@ -8,6 +8,7 @@ import {
 } from "../../components/ui/card";
 import { BookOpen, Users, FileText, TrendingUp } from "lucide-react";
 import ProfileCard from "../../components/ProfileCard";
+import EspPushWidget from "../../components/EspPushWidget";
 
 export default function MyDashboard() {
   const stats = [
@@ -70,45 +71,49 @@ export default function MyDashboard() {
         })}
       </div>
 
-      {/* Profile Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Profile + ESP32 Push */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ProfileCard />
+        <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        {/* Additional Dashboard Content */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm">New quiz created for Physics</p>
-                  <p className="text-xs text-gray-500">2 hours ago</p>
+          <EspPushWidget />
+
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-start gap-4">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                  <div className="flex-1">
+                    <p className="text-sm">New quiz created for Physics</p>
+                    <p className="text-xs text-gray-500">2 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                  <div className="flex-1">
+                    <p className="text-sm">
+                      15 students completed Chemistry quiz
+                    </p>
+                    <p className="text-xs text-gray-500">5 hours ago</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                  <div className="flex-1">
+                    <p className="text-sm">
+                      New material uploaded: Biology Chapter 3
+                    </p>
+                    <p className="text-xs text-gray-500">1 day ago</p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-start gap-4">
-                <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm">
-                    15 students completed Chemistry quiz
-                  </p>
-                  <p className="text-xs text-gray-500">5 hours ago</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
-                <div className="flex-1">
-                  <p className="text-sm">
-                    New material uploaded: Biology Chapter 3
-                  </p>
-                  <p className="text-xs text-gray-500">1 day ago</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

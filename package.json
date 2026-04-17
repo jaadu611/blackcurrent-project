@@ -9,20 +9,20 @@
     "lint": "eslint"
   },
   "dependencies": {
-<<<<<<< HEAD
     "clsx": "^2.1.1",
     "lucide-react": "^1.8.0",
-=======
     "assemblyai": "^4.30.0",
->>>>>>> 8b815a32249d5f0b33b27e25eca175b34fc53504
+    "dotenv": "^17.4.2",
     "next": "16.2.4",
     "node-record-lpcm16": "^1.0.1",
+    "playwright": "^1.59.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/dotenv": "^6.1.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

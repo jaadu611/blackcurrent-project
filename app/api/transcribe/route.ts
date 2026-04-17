@@ -1,18 +1,24 @@
 import { NextResponse } from "next/server";
-import { run } from "@/lib/assemblyAI";
+import { AssemblyAI } from "assemblyai";
 import path from "path";
 
-export async function POST(req: Request) {
+const client = new AssemblyAI({
+  apiKey: process.env.ASSEMBLYAI_API_KEY as string,
+});
+
+export async function POST() {
   try {
-    // For now, hardcode the path to the project root's test-audio.mp3
-    // In the future, this would receive the generated mp3 file from the frontend
     const audioPath = path.join(process.cwd(), "test-audio.mp3");
     
-    const text = await run(audioPath);
-    
-    return NextResponse.json({ text });
+    const transcript = await client.transcripts.transcribe({
+      audio: audioPath,
+      language_detection: true,
+      speech_models: ["universal-3-pro", "universal-2"],
+    });
+
+    return NextResponse.json({ text: transcript.text });
   } catch (error: any) {
-    console.error("Transcription API error:", error);
-    return NextResponse.json({ error: error.message || "Failed to transcribe" }, { status: 500 });
+    console.error("[API transcribe] Error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

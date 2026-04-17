@@ -3,6 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useAuth } from "../../components/AuthProvider";
+import { AuthProvider } from "../../components/AuthProvider";
 import {
   LayoutDashboard,
   Users,
@@ -92,6 +94,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
 
   return (
     <div className="flex h-svh bg-gray-50 overflow-hidden">
@@ -102,18 +105,22 @@ export default function DashboardLayout({
         {/* Header */}
         <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between z-10">
           <div>
-            <h1 className="text-gray-900 font-extrabold text-lg tracking-tight">Name of the teacher</h1>
+            <h1 className="text-gray-900 font-extrabold text-lg tracking-tight">
+              {user ? user.fullName : "Teacher Dashboard"}
+            </h1>
             <p className="text-xs font-medium text-gray-400 mt-0.5 uppercase tracking-widest">
-              Teacher Dashboard
+              {user ? user.institute : "Welcome"}
             </p>
           </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-2 hover:bg-gray-100 rounded-lg px-3 py-2 transition-colors focus:outline-hidden">
-              <div className="w-8 h-8 bg-gray-900 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center">
                 <User className="w-4 h-4 text-white" />
               </div>
-              <span className="text-sm font-medium">Hello Name</span>
+              <span className="text-sm font-medium">
+                {user ? user.fullName.split(" ")[0] : "User"}
+              </span>
               <ChevronDown className="w-4 h-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -123,7 +130,10 @@ export default function DashboardLayout({
               <DropdownMenuItem className="cursor-pointer">
                 Settings
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer text-red-600">
+              <DropdownMenuItem 
+                className="cursor-pointer text-red-600 font-bold"
+                onClick={logout}
+              >
                 Logout
               </DropdownMenuItem>
             </DropdownMenuContent>

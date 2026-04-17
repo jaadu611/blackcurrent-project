@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
+import { useAuth } from "../../components/AuthProvider";
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
     fullName: "",
-    username: "",
+    number: "",
     password: "",
     institute: "",
-    instituteEmail: "",
+    email: "",
   });
 
   const institutes = [
@@ -18,6 +21,16 @@ const SignupPage = () => {
     "Institute 2",
     "Institute 3",
   ];
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const router = useRouter();
+  const { refreshUser } = useAuth();
+
+  const validatePassword = (pass: string) => {
+    return pass.length >= 6;
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -29,9 +42,37 @@ const SignupPage = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted:", formData);
+    setError("");
+
+    if (!validatePassword(formData.password)) {
+      setError("Password must be at least 6 characters long.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Something went wrong");
+      } else {
+        await refreshUser();
+        router.push("/");
+      }
+    } catch (err) {
+      setError("An unexpected error occurred");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -55,11 +96,17 @@ const SignupPage = () => {
         <div className="w-full max-w-md relative z-10">
           {/* Title Section */}
           <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold text-black mb-2">SignUp</h1>
-            <p className="text-gray-600 text-sm">
-              Lorem welfsdakfjsadl asdlfkjsad
+            <h1 className="text-5xl font-bold text-black mb-2 tracking-tighter">SignUp</h1>
+            <p className="text-gray-500 text-sm font-medium">
+              Join the Blackcurrent community today
             </p>
           </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-6 text-sm font-medium animate-in fade-in slide-in-from-top-1">
+              {error}
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -76,13 +123,13 @@ const SignupPage = () => {
               />
             </div>
 
-            {/* Username Input */}
+            {/* Phone Number Input */}
             <div>
               <input
                 type="text"
-                name="username"
-                placeholder="Username"
-                value={formData.username}
+                name="number"
+                placeholder="Phone Number"
+                value={formData.number}
                 onChange={handleChange}
                 className="w-full px-6 py-3 border-2 border-gray-400 rounded-lg focus:outline-none focus:border-green-400 placeholder-gray-400 text-gray-700 transition-colors"
                 required
@@ -90,16 +137,23 @@ const SignupPage = () => {
             </div>
 
             {/* Password Input */}
-            <div>
+            <div className="relative">
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full px-6 py-3 border-2 border-gray-400 rounded-lg focus:outline-none focus:border-green-400 placeholder-gray-400 text-gray-700 transition-colors"
+                className="w-full px-6 py-3 border-2 border-gray-400 rounded-lg focus:outline-none focus:border-green-400 placeholder-gray-400 text-gray-700 transition-colors pr-14"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
 
             {/* Institute Dropdown */}
@@ -119,13 +173,13 @@ const SignupPage = () => {
               </select>
             </div>
 
-            {/* Institute Email Input */}
+            {/* Email Input */}
             <div>
               <input
                 type="email"
-                name="instituteEmail"
-                placeholder="Institute Email"
-                value={formData.instituteEmail}
+                name="email"
+                placeholder="Email Address"
+                value={formData.email}
                 onChange={handleChange}
                 className="w-full px-6 py-3 border-2 border-gray-400 rounded-lg focus:outline-none focus:border-green-400 placeholder-gray-400 text-gray-700 transition-colors"
                 required
@@ -135,9 +189,10 @@ const SignupPage = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-green-400 hover:bg-green-500 text-black font-semibold py-3 rounded-lg transition-colors mt-8"
+              disabled={loading}
+              className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-red-100 mt-4 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign Up
+              {loading ? "Registering..." : "Sign Up"}
             </button>
           </form>
 

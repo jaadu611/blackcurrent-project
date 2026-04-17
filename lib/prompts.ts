@@ -59,4 +59,5 @@ Do not include any text, markdown formatting (like \`\`\`json), or explanations 
 7. ESP32 Constraints: Keep text concise for small screens.
 8. Format: Return ONLY raw JSON array.
 9. Judicious Follow-ups: Not every question or option requires a follow-up. Only include 'followUp' when it builds logic or adds educational value; do not force follow-ups where they are unnecessary.
+10. Option Count: Every multiple-choice question (mcq) MUST have exactly 4 options — no more and no less.
 `;

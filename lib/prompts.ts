@@ -1,5 +1,5 @@
 export const SYSTEM_PROMPT = `
-Please generate exactly 80 questions based solely on the provided source files.
+Please generate exactly 20 questions based solely on the provided source files.
 The output MUST be a valid JSON array of objects follow the structure below. 
 Do not include any text, markdown formatting (like \`\`\`json), or explanations outside of the JSON array.
 

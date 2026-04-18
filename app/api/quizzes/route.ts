@@ -30,11 +30,13 @@ export async function POST(request: Request) {
         const STATION_IP = process.env.STATION_IP || "10.30.233.98";
         const espUrl = `http://${STATION_IP}/api/load_questions`;
 
-        console.log(`[PUSH] Attempting to sync quiz to ESP at ${espUrl}`);
+        console.log(`[PUSH] Attempting to push new quiz to ESP at: ${espUrl}`);
 
         // Prepare payload in web-native format
         const quizPayload = {
+            _id: newQuiz._id.toString(),
             id: newQuiz._id.toString(),
+            quizId: newQuiz._id.toString(),
             title: newQuiz.title,
             questions: newQuiz.questions.map((q: any) => ({
                 type: q.type,

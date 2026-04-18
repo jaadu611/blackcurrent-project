@@ -16,6 +16,8 @@ export async function POST(request: Request) {
         const quizId = formData.get("quizId") as string;
         const answersStr = formData.get("answers") as string;
 
+        console.log(`[API submit] Incoming submission from roll: ${rollNumber}, quizId: ${quizId}`);
+
         if (!rollNumber || !quizId || !answersStr) {
             return NextResponse.json(
                 { error: "Missing required fields" },
@@ -24,9 +26,25 @@ export async function POST(request: Request) {
         }
 
         const answers = JSON.parse(answersStr);
-        const quiz = await Quiz.findById(quizId);
+        console.log(`[API submit] RAW DATA RECEIVED FROM ESP:`, answersStr);
+
+        let quiz = null;
+        const cleanQuizId = (quizId || "").trim().replace(/^["']|["']$/g, '');
+
+        // 1. Try to find by ID if it looks like a valid ObjectId
+        if (cleanQuizId && cleanQuizId.length === 24 && /^[0-9a-fA-F]{24}$/.test(cleanQuizId)) {
+            quiz = await Quiz.findById(cleanQuizId);
+        }
+
+        // 2. Fallback to latest quiz if ID is missing, invalid (like "demo_quiz"), or not found
         if (!quiz) {
-            return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
+            console.log(`[API submit] No valid quiz found for ID "${cleanQuizId}". Falling back to most recent quiz.`);
+            quiz = await Quiz.findOne().sort({ createdAt: -1 });
+        }
+
+        if (!quiz) {
+            console.error("[API submit] Critical failure: No quizzes exist in database.");
+            return NextResponse.json({ error: "No quizzes found in database. Please create one first." }, { status: 404 });
         }
 
         const uploadDir = path.join(process.cwd(), "public", "uploads");
@@ -40,7 +58,7 @@ export async function POST(request: Request) {
         for (let i = 0; i < quiz.questions.length; i++) {
             const q = quiz.questions[i];
             const userAnswerData = answers[i] || {};
-            
+
             // userAnswerData could be a string (legacy) or an object
             const userAnswer = typeof userAnswerData === 'string' ? userAnswerData : userAnswerData.answer;
             const followUpAnswer = userAnswerData.followUpAnswer;
@@ -69,7 +87,7 @@ export async function POST(request: Request) {
                     const filePath = path.join(uploadDir, fileName);
                     fs.writeFileSync(filePath, Buffer.from(bytes));
                     audioUrl = `/uploads/${fileName}`;
-                    
+
                     // Transcribe
                     transcript = await transcribeAudio(filePath) || "";
                 }
@@ -102,7 +120,7 @@ export async function POST(request: Request) {
                         const filePath = path.join(uploadDir, fileName);
                         fs.writeFileSync(filePath, Buffer.from(bytes));
                         fAudioUrl = `/uploads/${fileName}`;
-                        
+
                         // Transcribe
                         fTranscript = await transcribeAudio(filePath) || "";
                     }
@@ -130,6 +148,34 @@ export async function POST(request: Request) {
             });
         }
 
+        // Detailed Terminal Logging
+        console.log("\n" + "=".repeat(50));
+        console.log(`SUBMISSION RECEIVED: Roll ${rollNumber}`);
+        console.log(`Quiz: ${quiz.title}`);
+        console.log("-".repeat(50));
+        processedAnswers.forEach((ans, idx) => {
+            const q = quiz.questions[idx];
+            const rawAns = answers[idx] || {};
+            // Look for any time-related key (time, duration, timeTaken, seconds, etc.)
+            const timeVal = rawAns.time ?? rawAns.duration ?? rawAns.timeTaken ?? rawAns.seconds ?? "N/A";
+
+            let displayAns = ans.userAnswer;
+            if (q.type === 'voice') displayAns = "AUDIO";
+
+            console.log(`Q${idx + 1}: ${q.question.substring(0, 50)}${q.question.length > 50 ? "..." : ""}`);
+            console.log(`   Answer: [${displayAns}] | Time: ${timeVal}s`);
+
+            if (ans.followUp) {
+                const fTimeVal = rawAns.followUpTime ?? rawAns.followUpDuration ?? "N/A";
+                let fDisplayAns = ans.followUp.userAnswer;
+                if (q.followUp?.type === 'voice') fDisplayAns = "AUDIO";
+                console.log(`   Follow-up: [${fDisplayAns}] | Time: ${fTimeVal}s`);
+            }
+        });
+        console.log("-".repeat(50));
+        console.log(`SUBMISSION PROCESSING COMPLETE`);
+        console.log("=".repeat(50) + "\n");
+
         let student = await Student.findOne({ rollName: rollNumber });
         if (!student) {
             student = await Student.create({
@@ -141,21 +187,42 @@ export async function POST(request: Request) {
         const submission = await Submission.create({
             studentId: student._id,
             rollNumber,
-            quizId,
+            quizId: quiz._id,
             answers: processedAnswers,
             score: totalScore,
             totalQuestions: quiz.questions.length,
         });
 
-        return NextResponse.json({
-            message: "Submission received and processed successfully",
-            submissionId: submission._id,
-            score: totalScore,
-            totalQuestions: quiz.questions.length,
-        }, { status: 201 });
+        const response = NextResponse.json(
+            {
+                message: "Submission successful",
+                score: totalScore,
+                total: quiz.questions.length,
+            },
+            { status: 201 }
+        );
 
+        // Add CORS headers for ESP Web UI
+        response.headers.set("Access-Control-Allow-Origin", "*");
+        response.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+        response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+
+        return response;
     } catch (error: any) {
         console.error("[API submit] Error:", error);
-        return NextResponse.json({ error: error.message || "Failed to submit" }, { status: 500 });
+        const response = NextResponse.json(
+            { error: "Internal server error", details: error.message },
+            { status: 500 }
+        );
+        response.headers.set("Access-Control-Allow-Origin", "*");
+        return response;
     }
+}
+
+export async function OPTIONS() {
+    const response = new NextResponse(null, { status: 204 });
+    response.headers.set("Access-Control-Allow-Origin", "*");
+    response.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+    return response;
 }

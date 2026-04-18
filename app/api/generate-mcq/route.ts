@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { chromium } from "playwright";
+import connectToDatabase from "@/lib/mongodb";
 import path from "path";
 import fs from "fs";
 import os from "os";
@@ -12,6 +13,7 @@ export async function POST(req: Request) {
   let browser: any = null;
 
   try {
+    await connectToDatabase();
     const formData = await req.formData();
 
     // ── KEY FIX: getAll() collects every "pdf" entry, not just the first ──
@@ -71,12 +73,34 @@ export async function POST(req: Request) {
     // 4. Parse JSON result
     let questionsPool: any[] = [];
     try {
-      const jsonMatch = rawResult.match(/\[[\s\S]*\]/);
-      const jsonStr = jsonMatch ? jsonMatch[0] : rawResult;
-      questionsPool = JSON.parse(jsonStr);
-    } catch {
+      // Clean the raw result: remove markdown blocks and whitespace
+      let cleaned = rawResult.trim();
+      if (cleaned.startsWith("```json")) {
+        cleaned = cleaned.replace(/^```json/, "").replace(/```$/, "");
+      } else if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replace(/^```/, "").replace(/```$/, "");
+      }
+
+      // Try to find the array if it's embedded in other text
+      const jsonMatch = cleaned.match(/\[[\s\S]*\]/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : cleaned;
+
+      try {
+        questionsPool = JSON.parse(jsonStr);
+      } catch (parseErr) {
+        // Fallback: try to fix common JSON errors (like trailing commas or unescaped quotes)
+        // But for now, let's try a simpler fix: checking if the JSON was cut off
+        if (jsonStr.lastIndexOf("}") < jsonStr.lastIndexOf(",")) {
+          // likely cut off or has trailing comma
+          const fixedStr = jsonStr.substring(0, jsonStr.lastIndexOf("}") + 1) + "]";
+          questionsPool = JSON.parse(fixedStr);
+        } else {
+          throw parseErr;
+        }
+      }
+    } catch (e) {
       console.error("[API] JSON Parse Error. Raw result:", rawResult);
-      throw new Error("AI returned invalid JSON format.");
+      throw new Error("AI returned invalid JSON format. Please try again.");
     }
 
     // 5. Save to MongoDB
@@ -109,14 +133,22 @@ export async function POST(req: Request) {
 
     // 7. Push to ESP32 in background
     const STATION_IP = process.env.STATION_IP || "10.30.233.98";
+    const quizPayload = {
+      _id: newQuiz._id.toString(),
+      id: newQuiz._id.toString(),
+      quizId: newQuiz._id.toString(),
+      title: newQuiz.title,
+      questions: selectedQuestions
+    };
+
     fetch(`http://${STATION_IP}/api/load_questions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(selectedQuestions),
+      body: JSON.stringify(quizPayload),
     })
       .then((r) =>
         r.ok
-          ? console.log("[API] Synced to ESP32")
+          ? console.log(`[API] Synced database-backed quiz (${newQuiz._id}) to ESP32`)
           : console.error("[API] ESP32 error:", r.status),
       )
       .catch((e) => console.warn("[API] ESP32 unreachable:", e.message));
@@ -133,7 +165,7 @@ export async function POST(req: Request) {
   } finally {
     if (browser) {
       if (browser.isConnected && browser.isConnected()) {
-        await browser.close().catch(() => {});
+        await browser.close().catch(() => { });
       }
     }
     if (tempDir) fs.rmSync(tempDir, { recursive: true, force: true });

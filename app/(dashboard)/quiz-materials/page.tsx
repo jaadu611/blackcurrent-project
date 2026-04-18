@@ -10,6 +10,7 @@ import {
   Download,
   Plus,
   Sparkles,
+  Cpu,
 } from "lucide-react";
 
 type UploadedFile = {
@@ -142,6 +143,24 @@ export default function QuizMaterials() {
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) handleFileUpload(Array.from(e.target.files));
+  };
+
+  const generateDebugQuiz = async () => {
+    try {
+      setIsGenerating(true);
+
+      // Call the centralized backend debug-push route
+      const res = await fetch("/api/debug-push");
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Failed to push debug data");
+
+      alert(`Database-backed debug quiz pushed successfully!\nQuiz ID: ${data.quizId}`);
+    } catch (err: any) {
+      alert(`Debug push failed: ${err.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   /**
@@ -404,18 +423,28 @@ export default function QuizMaterials() {
                   the AI
                 </p>
               </div>
-              {readyPdfs.length > 0 && (
+              <div style={{ display: "flex", gap: 10 }}>
                 <button
-                  style={isGenerating ? s.btnPrimaryDisabled : s.btnPrimary}
-                  onClick={generateRealQuiz}
+                  style={s.btnOutline}
+                  onClick={generateDebugQuiz}
                   disabled={isGenerating}
                 >
-                  <Sparkles size={15} />
-                  {isGenerating
-                    ? "Generating..."
-                    : `Run AI Automator (${readyPdfs.length} PDF${readyPdfs.length > 1 ? "s" : ""})`}
+                  <Cpu size={15} />
+                  Debug Push
                 </button>
-              )}
+                {readyPdfs.length > 0 && (
+                  <button
+                    style={isGenerating ? s.btnPrimaryDisabled : s.btnPrimary}
+                    onClick={generateRealQuiz}
+                    disabled={isGenerating}
+                  >
+                    <Sparkles size={15} />
+                    {isGenerating
+                      ? "Generating..."
+                      : `Run AI Automator (${readyPdfs.length} PDF${readyPdfs.length > 1 ? "s" : ""})`}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Drop zone */}
@@ -607,10 +636,10 @@ export default function QuizMaterials() {
                         style={
                           file.status === "processing"
                             ? {
-                                ...s.btnRed,
-                                opacity: 0.5,
-                                cursor: "not-allowed",
-                              }
+                              ...s.btnRed,
+                              opacity: 0.5,
+                              cursor: "not-allowed",
+                            }
                             : s.btnRed
                         }
                         onClick={() => generateQuizForFile(file.id)}

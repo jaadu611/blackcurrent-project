@@ -491,12 +491,19 @@ export default function VivaMaterials() {
                         value={selectedQuizId}
                         onValueChange={setSelectedQuizId}
                       >
-                        <SelectTrigger id="quiz-select">
+                        <SelectTrigger
+                          id="quiz-select"
+                          className="border-2 border-red-200 bg-white text-gray-900 hover:border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100"
+                        >
                           <SelectValue placeholder="Choose a quiz" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white border border-red-200">
                           {availableQuizzes.map((quiz) => (
-                            <SelectItem key={quiz.id} value={quiz.id}>
+                            <SelectItem
+                              key={quiz.id}
+                              value={quiz.id}
+                              className="hover:bg-red-50 focus:bg-red-100 cursor-pointer text-gray-900"
+                            >
                               {quiz.title} ({quiz.questionsCount} questions)
                             </SelectItem>
                           ))}
@@ -539,17 +546,19 @@ export default function VivaMaterials() {
               {papers.map((paper) => (
                 <div
                   key={paper.id}
-                  className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                  className={`p-4 border rounded-lg  cursor-pointer transition-all ${
                     selectedPaper?.id === paper.id
                       ? "border-red-500 bg-red-50"
                       : "border-gray-200 hover:border-gray-300 hover:shadow-sm"
                   }`}
                   onClick={() => setSelectedPaper(paper)}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between text-gray-900">
                     <div className="flex-1">
-                      <h3 className="text-gray-900 mb-1">{paper.title}</h3>
-                      <p className="text-sm text-gray-600 mb-2">
+                      <h3 className="text-gray-900 mb-1 font-semibold">
+                        {paper.title}
+                      </h3>
+                      <p className="text-sm text-gray-700 mb-2">
                         {paper.subject}
                       </p>
                       <div className="flex items-center gap-4 text-sm text-gray-500">
@@ -814,12 +823,19 @@ export default function VivaMaterials() {
                     value={selectedClass}
                     onValueChange={setSelectedClass}
                   >
-                    <SelectTrigger id="class-select">
+                    <SelectTrigger
+                      id="class-select"
+                      className="border-2 border-red-200 bg-white text-gray-900 hover:border-red-400 focus:border-red-500"
+                    >
                       <SelectValue placeholder="Choose a class" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-white border border-red-200">
                       {mockClasses.map((cls) => (
-                        <SelectItem key={cls.id} value={cls.id}>
+                        <SelectItem
+                          key={cls.id}
+                          value={cls.id}
+                          className="hover:bg-red-50 focus:bg-red-100 cursor-pointer text-gray-900"
+                        >
                           {cls.name} ({cls.studentCount} students)
                         </SelectItem>
                       ))}
@@ -829,7 +845,7 @@ export default function VivaMaterials() {
                 <Button
                   onClick={handleStartViva}
                   disabled={!selectedClass || vivaStarted}
-                  className={`min-w-[180px] shadow-lg ${
+                  className={`min-w-45 shadow-lg ${
                     vivaStarted
                       ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                       : "bg-red-500 hover:bg-red-600 text-white shadow-red-100"

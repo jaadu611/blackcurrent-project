@@ -14,6 +14,8 @@ import {
   ChevronDown,
   User,
   FileCheck,
+  Menu,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -31,19 +33,36 @@ const navigation = [
   { name: "Assignments", path: "/assignments", icon: BookOpen },
 ];
 
-function Sidebar({ pathname }: { pathname: string }) {
+function Sidebar({
+  pathname,
+  collapsed,
+  onToggle,
+}: {
+  pathname: string;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
   const isActive = (path: string) => {
     if (path === "/") return pathname === "/";
     return pathname === path || pathname.startsWith(path + "/");
   };
 
   return (
-    <aside className="w-52 bg-white border-r border-gray-200 flex flex-col shrink-0">
-      {/* Logo */}
-      <div className="p-4">
+    <aside
+      className={`${collapsed ? "w-20" : "w-52"} bg-white border-r border-gray-200 flex flex-col shrink-0 transition-all duration-300`}
+    >
+      {/* Logo & Toggle */}
+      <div className="p-4 flex items-center justify-between">
         <div className="w-10 h-10 bg-linear-to-br from-red-500 to-pink-500 rounded-xl flex items-center justify-center">
           <div className="w-6 h-6 border-4 border-white rounded-full"></div>
         </div>
+        <button
+          onClick={onToggle}
+          className={`p-1.5 hover:bg-gray-100 rounded-lg transition-colors ${collapsed ? "hidden" : ""}`}
+          aria-label="Toggle sidebar"
+        >
+          <X className="w-4 h-4 text-black" />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -63,9 +82,12 @@ function Sidebar({ pathname }: { pathname: string }) {
                     : "text-gray-600 hover:bg-gray-100"
                 }
               `}
+              title={collapsed ? item.name : undefined}
             >
-              <Icon className="w-5 h-5" />
-              <span className="text-sm font-medium">{item.name}</span>
+              <Icon className="w-5 h-5 flex-shrink-0" />
+              {!collapsed && (
+                <span className="text-sm font-medium">{item.name}</span>
+              )}
             </Link>
           );
         })}
@@ -80,9 +102,14 @@ function Sidebar({ pathname }: { pathname: string }) {
               ? "bg-red-500 text-white shadow-lg shadow-red-200"
               : "text-gray-500 hover:bg-red-50 hover:text-red-600"
           }`}
+          title={collapsed ? "Supports" : undefined}
         >
-          <HelpCircle className="w-5 h-5" />
-          <span className="text-sm font-semibold tracking-tight">Supports</span>
+          <HelpCircle className="w-5 h-5 flex-shrink-0" />
+          {!collapsed && (
+            <span className="text-sm font-semibold tracking-tight">
+              Supports
+            </span>
+          )}
         </Link>
       </div>
     </aside>
@@ -98,22 +125,38 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [collapsed, setCollapsed] = React.useState(false);
+
+  const toggleSidebar = () => setCollapsed(!collapsed);
 
   return (
     <div className="flex h-svh bg-gray-50 overflow-hidden">
-      <MemoizedSidebar pathname={pathname} />
+      <MemoizedSidebar
+        pathname={pathname}
+        collapsed={collapsed}
+        onToggle={toggleSidebar}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between z-10">
-          <div>
-            <h1 className="text-gray-900 font-extrabold text-lg tracking-tight">
-              {user ? user.fullName : "Teacher Dashboard"}
-            </h1>
-            <p className="text-xs font-medium text-gray-400 mt-0.5 uppercase tracking-widest">
-              {user ? user.institute : "Welcome"}
-            </p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={toggleSidebar}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors lg:hidden"
+              aria-label="Toggle sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-gray-900 font-extrabold text-lg tracking-tight">
+                {user ? user.fullName : "Teacher Dashboard"}
+              </h1>
+              <p className="text-xs font-medium text-gray-400 mt-0.5 uppercase tracking-widest">
+                {user ? user.institute : "Welcome"}
+              </p>
+            </div>
           </div>
 
           <DropdownMenu>
@@ -133,7 +176,7 @@ export default function DashboardLayout({
               <DropdownMenuItem className="cursor-pointer">
                 Settings
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 className="cursor-pointer text-red-600 font-bold"
                 onClick={logout}
               >

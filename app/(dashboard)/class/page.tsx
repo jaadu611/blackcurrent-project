@@ -7,14 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
-import {
-  ChevronRight,
-  ChevronDown,
-  User,
-  CheckCircle2,
-  XCircle,
-  Clock,
-} from "lucide-react";
+import { ChevronRight, ChevronDown, User } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -41,7 +34,6 @@ type ClassData = {
   students: Student[];
 };
 
-// Mock data
 const mockClasses: ClassData[] = [
   {
     id: "1",
@@ -90,74 +82,25 @@ const mockClasses: ClassData[] = [
     id: "2",
     name: "Chemistry 201",
     totalStudents: 32,
-    students: [
-      {
-        id: "5",
-        name: "Sarah Williams",
-        email: "sarah.w@example.com",
-        quizStatus: "completed",
-        quizMarks: 88,
-        vivaMarks: 82,
-        totalMarks: 170,
-      },
-      {
-        id: "6",
-        name: "David Lee",
-        email: "david.lee@example.com",
-        quizStatus: "completed",
-        quizMarks: 76,
-        vivaMarks: 80,
-        totalMarks: 156,
-      },
-    ],
+    students: [],
   },
   {
     id: "3",
     name: "Biology 102",
     totalStudents: 25,
-    students: [
-      {
-        id: "7",
-        name: "Lisa Anderson",
-        email: "lisa.a@example.com",
-        quizStatus: "completed",
-        quizMarks: 94,
-        vivaMarks: 90,
-        totalMarks: 184,
-      },
-    ],
+    students: [],
   },
   {
     id: "4",
     name: "Mathematics 301",
     totalStudents: 30,
-    students: [
-      {
-        id: "8",
-        name: "Robert Taylor",
-        email: "robert.t@example.com",
-        quizStatus: "pending",
-        quizMarks: 0,
-        vivaMarks: 0,
-        totalMarks: 0,
-      },
-    ],
+    students: [],
   },
   {
     id: "5",
     name: "English Literature",
     totalStudents: 22,
-    students: [
-      {
-        id: "9",
-        name: "Amanda White",
-        email: "amanda.w@example.com",
-        quizStatus: "completed",
-        quizMarks: 87,
-        vivaMarks: 85,
-        totalMarks: 172,
-      },
-    ],
+    students: [],
   },
 ];
 
@@ -168,127 +111,160 @@ export default function Class() {
     setExpandedClass(expandedClass === classId ? null : classId);
   };
 
+  const activeClass = mockClasses.find((c) => c.id === expandedClass);
+
   return (
-    <div className="p-8">
+    <div className="p-8 bg-gray-50 min-h-screen">
+      {/* Header */}
       <div className="mb-8">
-        <h2 className="text-gray-900 mb-2">Class Management</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">
+          Class Management
+        </h2>
+        <p className="text-sm text-gray-500">
           View and manage your classes and student performance
         </p>
       </div>
 
-      {/* Classes Grid */}
+      {/* Class Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {mockClasses.map((classItem) => (
-          <Card
-            key={classItem.id}
-            className="cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => toggleClass(classItem.id)}
-          >
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="text-gray-900 mb-1">{classItem.name}</h3>
+        {mockClasses.map((classItem) => {
+          const isActive = expandedClass === classItem.id;
+
+          return (
+            <Card
+              key={classItem.id}
+              onClick={() => toggleClass(classItem.id)}
+              className={`cursor-pointer transition-all duration-300 border 
+              ${
+                isActive
+                  ? "border-red-500 shadow-lg bg-white"
+                  : "border-gray-200 hover:shadow-md bg-white"
+              }`}
+            >
+              <CardContent className="p-6 flex items-center justify-between">
+                <div>
+                  <h3 className="text-gray-900 font-semibold text-lg">
+                    {classItem.name}
+                  </h3>
                   <p className="text-sm text-gray-500">
                     {classItem.totalStudents} students
                   </p>
                 </div>
-                {expandedClass === classItem.id ? (
-                  <ChevronDown className="w-5 h-5 text-gray-400" />
+
+                {isActive ? (
+                  <ChevronDown className="w-5 h-5 text-red-500" />
                 ) : (
                   <ChevronRight className="w-5 h-5 text-gray-400" />
                 )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Expanded Class Details */}
-      {expandedClass && (
-        <Card className="animate-in fade-in slide-in-from-top-2 duration-300">
-          <CardHeader>
-            <CardTitle>
-              {mockClasses.find((c) => c.id === expandedClass)?.name} - Student
-              Performance
+      {/* Table Section */}
+      {activeClass && (
+        <Card className="border border-gray-200 shadow-lg animate-in fade-in slide-in-from-top-2 duration-300">
+          <CardHeader className="bg-gray-100 border-b">
+            <CardTitle className="text-gray-900 text-lg font-semibold">
+              {activeClass.name} — Student Performance
             </CardTitle>
           </CardHeader>
-          <CardContent>
+
+          <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Student Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead className="text-right">Quiz Marks</TableHead>
-                  <TableHead className="text-right">Viva Marks</TableHead>
-                  <TableHead className="text-right">Total Marks</TableHead>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="text-gray-700 font-semibold">
+                    Student
+                  </TableHead>
+                  <TableHead className="text-gray-700 font-semibold">
+                    Email
+                  </TableHead>
+                  <TableHead className="text-right text-gray-700 font-semibold">
+                    Quiz
+                  </TableHead>
+                  <TableHead className="text-right text-gray-700 font-semibold">
+                    Viva
+                  </TableHead>
+                  <TableHead className="text-right text-gray-700 font-semibold">
+                    Total
+                  </TableHead>
                 </TableRow>
               </TableHeader>
+
               <TableBody>
-                {mockClasses
-                  .find((c) => c.id === expandedClass)
-                  ?.students.map((student) => (
-                    <TableRow key={student.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center">
-                            <User className="w-4 h-4 text-gray-600" />
-                          </div>
-                          <span>{student.name}</span>
+                {activeClass.students.map((student) => (
+                  <TableRow
+                    key={student.id}
+                    className="hover:bg-gray-50 transition"
+                  >
+                    {/* Name */}
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center">
+                          <User className="w-4 h-4 text-gray-600" />
                         </div>
-                      </TableCell>
-                      <TableCell className="text-gray-600">
-                        {student.email}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {student.quizStatus === "pending" ? (
-                          <span className="text-red-500 text-sm">Pending</span>
-                        ) : (
-                          <span
-                            className={
-                              student.quizMarks > 0
-                                ? "text-gray-900"
-                                : "text-gray-400"
-                            }
-                          >
-                            {student.quizMarks}/100
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {student.quizStatus === "pending" ? (
-                          <span className="text-red-500 text-sm">Pending</span>
-                        ) : (
-                          <span
-                            className={
-                              student.vivaMarks > 0
-                                ? "text-gray-900"
-                                : "text-gray-400"
-                            }
-                          >
-                            {student.vivaMarks}/100
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {student.quizStatus === "pending" ? (
-                          <span className="text-red-500 text-sm">Pending</span>
-                        ) : (
-                          <span
-                            className={
-                              student.totalMarks > 0
-                                ? "text-gray-900"
-                                : "text-gray-400"
-                            }
-                          >
-                            {student.totalMarks}/200
-                          </span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        <span className="font-medium text-gray-900">
+                          {student.name}
+                        </span>
+                      </div>
+                    </TableCell>
+
+                    {/* Email */}
+                    <TableCell className="text-gray-500 text-sm">
+                      {student.email}
+                    </TableCell>
+
+                    {/* Quiz */}
+                    <TableCell className="text-right">
+                      {student.quizStatus === "pending" ? (
+                        <span className="text-red-500 font-medium text-sm">
+                          Pending
+                        </span>
+                      ) : (
+                        <span className="text-gray-900 font-medium">
+                          {student.quizMarks}/100
+                        </span>
+                      )}
+                    </TableCell>
+
+                    {/* Viva */}
+                    <TableCell className="text-right">
+                      {student.quizStatus === "pending" ? (
+                        <span className="text-red-500 font-medium text-sm">
+                          Pending
+                        </span>
+                      ) : (
+                        <span className="text-gray-900 font-medium">
+                          {student.vivaMarks}/100
+                        </span>
+                      )}
+                    </TableCell>
+
+                    {/* Total */}
+                    <TableCell className="text-right">
+                      {student.quizStatus === "pending" ? (
+                        <span className="text-red-500 font-medium text-sm">
+                          Pending
+                        </span>
+                      ) : (
+                        <span className="text-gray-900 font-semibold">
+                          {student.totalMarks}/200
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
+
+            {/* Empty state */}
+            {activeClass.students.length === 0 && (
+              <div className="text-center py-10 text-gray-500 text-sm">
+                No student data available
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

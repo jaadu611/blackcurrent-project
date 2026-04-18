@@ -52,9 +52,9 @@ export default function MyDashboard() {
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.label}>
+            <Card key={stat.label} className=" bg-[#222a3d] ">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm text-gray-600">
+                <CardTitle className="text-sm text-[whitesmoke]">
                   {stat.label}
                 </CardTitle>
                 <div
@@ -75,15 +75,14 @@ export default function MyDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ProfileCard />
         <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-
           <EspPushWidget />
 
           {/* Recent Activity */}
-          <Card>
+          <Card className="bg-[#222a3d]">
             <CardHeader>
               <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-8 ">
               <div className="space-y-4">
                 <div className="flex items-start gap-4">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>

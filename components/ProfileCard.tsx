@@ -23,44 +23,44 @@ export default function ProfileCard() {
 
   return (
     <Card className="overflow-hidden">
-      <CardContent className="p-8">
+      <CardContent className="p-8 bg-[#222a3d]">
         {/* Profile Header */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-48 h-48 bg-linear-to-br from-gray-200 to-gray-300 rounded-2xl flex items-center justify-center mb-6">
             <User className="w-24 h-24 text-gray-500" />
           </div>
-          <h3 className="text-gray-900 mb-2">My profile</h3>
+          <h3 className="text-[whitesmoke] mb-2">My profile</h3>
           <p className="text-xs text-gray-400">Last Login 09 Aug 2019, 14:54</p>
         </div>
 
         {/* Profile Form */}
         <div className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-sm text-gray-700">
+            <Label htmlFor="name" className="text-sm text-[#f5deb3c4]">
               Full Name
             </Label>
             <Input
               id="name"
               value={formData.name}
               onChange={(e) => handleInputChange("name", e.target.value)}
-              className="bg-gray-50 border-gray-200"
+              className="bg-[#f5f5f566] border-none"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone" className="text-sm text-gray-700">
+            <Label htmlFor="phone" className="text-sm text-[#f5deb3c4]">
               Phone Number
             </Label>
             <Input
               id="phone"
               value={formData.phone}
               onChange={(e) => handleInputChange("phone", e.target.value)}
-              className="bg-gray-50 border-gray-200"
+              className="bg-[#f5f5f566] border-none"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-sm text-gray-700">
+            <Label htmlFor="email" className="text-sm text-[#f5deb3c4]">
               Email Address
             </Label>
             <Input
@@ -68,13 +68,13 @@ export default function ProfileCard() {
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
-              className="bg-gray-50 border-gray-200"
+              className="bg-[#f5f5f566] border-none"
             />
           </div>
 
           <Button
             onClick={handleSave}
-            className="w-full bg-linear-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700"
+            className="w-full bg-[#3ed76e] hover:from-orange-600 hover:to-orange-700 text-black"
           >
             Save
           </Button>

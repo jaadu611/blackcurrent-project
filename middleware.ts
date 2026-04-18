@@ -14,7 +14,8 @@ export function middleware(request: NextRequest) {
     !isAuthRoute &&
     !pathname.startsWith("/api") &&
     !pathname.startsWith("/_next") &&
-    pathname !== "/favicon.ico";
+    pathname !== "/favicon.ico" &&
+    pathname !== "/questions";
 
   if (isProtectedRoute && !teacherId) {
     // Redirect to login if trying to access a protected route without a session

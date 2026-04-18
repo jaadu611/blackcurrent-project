@@ -6,7 +6,8 @@ import { Wifi, Send, CheckCircle, XCircle, Loader2, Cpu } from "lucide-react";
 type Status = "idle" | "loading" | "success" | "error";
 
 export default function EspPushWidget() {
-  const [espIp, setEspIp] = useState("192.168.1.10:80");
+  const [espIp, setEspIp] = useState("localhost:8000");
+  const [endpoint, setEndpoint] = useState("/submit");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
   const [preview, setPreview] = useState("");
@@ -36,17 +37,17 @@ export default function EspPushWidget() {
       const res = await fetch("/api/esp/push", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: clipText, espIp }),
+        body: JSON.stringify({ data: clipText, espIp, endpoint }),
       });
 
       const json = await res.json();
 
       if (!res.ok) {
         setStatus("error");
-        setMessage(json.error || "ESP32 responded with an error.");
+        setMessage(json.error || "Server responded with an error.");
       } else {
         setStatus("success");
-        setMessage("Questions sent to ESP32 successfully!");
+        setMessage("Questions pushed successfully!");
       }
     } catch (err: any) {
       setStatus("error");
@@ -62,7 +63,7 @@ export default function EspPushWidget() {
   }[status];
 
   const buttonLabel =
-    status === "loading" ? "Pushing..." : "Push Clipboard → ESP32";
+    status === "loading" ? "Pushing..." : "Push Clipboard Data";
 
   return (
     <div className="rounded-2xl bg-surface-high border border-outline-variant/20 p-6 space-y-5 shadow-lg shadow-surface/40">
@@ -72,25 +73,39 @@ export default function EspPushWidget() {
           <Wifi className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-on-surface">Send to ESP32</p>
+          <p className="text-sm font-semibold text-on-surface">Push Assessment Data</p>
           <p className="text-xs text-on-surface-variant">
-            Reads NotebookLM output from clipboard
+            Sends NotebookLM output to a local or remote receiver
           </p>
         </div>
       </div>
 
-      {/* IP input */}
-      <div className="space-y-1">
-        <label className="text-xs font-medium text-on-surface-variant">
-          ESP32 IP : Port
-        </label>
-        <input
-          type="text"
-          value={espIp}
-          onChange={(e) => setEspIp(e.target.value)}
-          placeholder="192.168.1.10:80"
-          className="w-full bg-surface-highest rounded-lg px-3 py-2 text-sm text-on-surface placeholder:text-on-surface/40 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all font-mono"
-        />
+      {/* Host input */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-on-surface-variant uppercase tracking-tight">
+            Host : Port
+          </label>
+          <input
+            type="text"
+            value={espIp}
+            onChange={(e) => setEspIp(e.target.value)}
+            placeholder="localhost:8000"
+            className="w-full bg-surface-highest rounded-lg px-3 py-2 text-sm text-on-surface placeholder:text-on-surface/40 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all font-mono"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-on-surface-variant uppercase tracking-tight">
+            Endpoint
+          </label>
+          <input
+            type="text"
+            value={endpoint}
+            onChange={(e) => setEndpoint(e.target.value)}
+            placeholder="/submit"
+            className="w-full bg-surface-highest rounded-lg px-3 py-2 text-sm text-on-surface placeholder:text-on-surface/40 focus:outline-none focus:ring-1 focus:ring-primary/30 transition-all font-mono"
+          />
+        </div>
       </div>
 
       {/* Preview */}

@@ -1,24 +1,18 @@
 import { NextResponse } from "next/server";
 
-/**
- * POST /api/esp/push
- * Body: { data: string; espIp: string }
- *
- * Reads the raw text payload and forwards it to the ESP32's
- * POST /api/load_questions endpoint.
- */
 export async function POST(req: Request) {
   try {
-    const { data, espIp } = await req.json();
+    const { data, espIp, endpoint = "/api/load_questions" } = await req.json();
 
     if (!data || !espIp) {
       return NextResponse.json(
         { error: "Missing 'data' or 'espIp'" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    const espUrl = `http://${espIp}/api/load_questions`;
+    const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    const espUrl = `http://${espIp}${cleanEndpoint}`;
     console.log("[ESP-PUSH] Forwarding to:", espUrl);
 
     const espResponse = await fetch(espUrl, {
@@ -32,8 +26,10 @@ export async function POST(req: Request) {
 
     if (!espResponse.ok) {
       return NextResponse.json(
-        { error: `ESP32 responded with ${espResponse.status}: ${responseText}` },
-        { status: 502 }
+        {
+          error: `ESP32 responded with ${espResponse.status}: ${responseText}`,
+        },
+        { status: 502 },
       );
     }
 
@@ -42,7 +38,7 @@ export async function POST(req: Request) {
     console.error("[ESP-PUSH] Error:", error);
     return NextResponse.json(
       { error: error.message || "Failed to reach ESP32" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

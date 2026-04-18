@@ -61,7 +61,10 @@
 
 @layer base {
   body {
-    @apply bg-background text-on-background antialiased selection:bg-primary/30;
+    @apply bg-background text-on-background antialiased selection:bg-primary/30 select-none;
+  }
+  input, textarea, .selectable-text {
+    @apply select-text;
   }
 }
 

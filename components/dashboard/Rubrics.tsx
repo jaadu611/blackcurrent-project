@@ -13,7 +13,7 @@ import {
   Copy,
   Sparkles
 } from 'lucide-react';
-import { ProgressGroveBarSet } from '../components/Shared';
+import { ProgressGroveBarSet } from './Shared';
 
 export const RubricsView = () => {
   return (
@@ -22,12 +22,12 @@ export const RubricsView = () => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-2">
             <span className="text-xs font-bold tracking-[0.1em] text-tertiary uppercase">Assessment Engine</span>
-            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-on-surface leading-tight">Rubrics Management</h2>
-            <p className="text-on-surface-variant max-w-xl text-lg leading-relaxed">Design, deploy, and automate grading with precision-engineered academic rubrics.</p>
+            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-on-surface leading-tight">Assessment Guides</h2>
+            <p className="text-on-surface-variant max-w-xl text-lg leading-relaxed">Design, deploy, and automate grading with precision-engineered assessment guides.</p>
           </div>
           <button className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold rounded-lg hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-primary/10 inner-glow">
             <Plus className="w-5 h-5" />
-            Create New Rubric
+            Create New Guide
           </button>
         </div>
       </section>
@@ -130,7 +130,7 @@ export const RubricsView = () => {
                 <span className="bg-tertiary/10 text-tertiary px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter">Lab</span>
               </div>
               <div className="space-y-3">
-                <p className="text-[10px] font-bold text-tertiary uppercase tracking-widest">Auto-Grader Maturity</p>
+                <p className="text-[10px] font-bold text-tertiary uppercase tracking-widest">Automation Maturity</p>
                 <ProgressGroveBarSet count={10} completion={90} color="var(--color-tertiary)" />
               </div>
             </div>
@@ -150,7 +150,7 @@ export const RubricsView = () => {
 
           <div className="relative overflow-hidden bg-surface-container-low group rounded-xl p-8 xl:col-span-2 h-64 flex items-center justify-between hover:bg-surface-container-high transition-all duration-500 border border-surface-container-high">
             <div className="z-10 space-y-4 max-w-lg">
-              <h3 className="text-3xl font-bold text-on-surface leading-none">Universal Citation Rubric</h3>
+              <h3 className="text-3xl font-bold text-on-surface leading-none">Universal Citation Guide</h3>
               <p className="text-on-surface-variant">Ensure MLA, APA, and Chicago style compliance across all history and social science assignments with our standard global validator.</p>
               <div className="flex gap-3">
                 <span className="px-4 py-1.5 bg-surface-container-highest rounded-full text-xs font-bold text-on-surface">1,240 Uses</span>

@@ -27,9 +27,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
-    // Set simple cookie
+    // Set the teacher_id cookie for DB-backed routes
     const cookieStore = await cookies();
     cookieStore.set("teacher_id", teacher._id.toString(), {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 1 week
+    });
+
+    // Also store the full user payload so /api/me doesn't need a DB round-trip.
+    // This is safe because it's httpOnly and never exposed to client JS.
+    const userPayload = JSON.stringify({
+      id: teacher._id.toString(),
+      fullName: teacher.fullName,
+      institute: teacher.institute,
+      email: teacher.email,
+    });
+    const encoded = Buffer.from(userPayload).toString("base64");
+    cookieStore.set("teacher_session", encoded, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       path: "/",

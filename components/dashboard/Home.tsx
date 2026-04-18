@@ -9,7 +9,7 @@ import {
   Mic2,
   AlertCircle
 } from 'lucide-react';
-import { ProgressGroveBarSet } from '../components/Shared';
+import { ProgressGroveBarSet } from './Shared';
 
 export const HomeView = () => {
   return (

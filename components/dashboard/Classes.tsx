@@ -12,7 +12,7 @@ import {
   History,
   Building2
 } from 'lucide-react';
-import { ProgressGroveBarSet } from '../components/Shared';
+import { ProgressGroveBarSet } from './Shared';
 
 export const ClassesView = () => {
   return (

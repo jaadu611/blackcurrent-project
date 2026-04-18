@@ -5,6 +5,7 @@ export async function POST() {
   try {
     const cookieStore = await cookies();
     cookieStore.delete("teacher_id");
+    cookieStore.delete("teacher_session");
 
     return NextResponse.json({ message: "Logged out successfully" }, { status: 200 });
   } catch (error) {

@@ -5,15 +5,26 @@ import fs from "fs";
 import os from "os";
 import { automateNotebookLM } from "@/lib/notebooklmAutomator";
 import { SYSTEM_PROMPT } from "@/lib/prompts";
+import connectToDatabase from "@/lib/mongodb";
+import GradingHistory from "@/models/GradingHistory";
+import { cookies } from "next/headers";
 
 const NOTEBOOK_TITLE_PREFIX = "MCQ Generator Session";
 
 export async function POST(req: Request) {
   const formData = await req.formData();
   const files = formData.getAll("files") as File[];
+  const studentName = (formData.get("studentName") as string) || "Unknown Student";
 
   if (files.length === 0) {
     return NextResponse.json({ error: "No files uploaded" }, { status: 400 });
+  }
+
+  const cookieStore = await cookies();
+  const teacherId = cookieStore.get("teacher_id")?.value;
+
+  if (!teacherId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), "notebooklm-"));
@@ -32,11 +43,20 @@ export async function POST(req: Request) {
     
     try {
       const result = await automateNotebookLM(page, uploadDir, SYSTEM_PROMPT, notebookTitle);
+      
+      // Save to History
+      await connectToDatabase();
+      await GradingHistory.create({
+        teacherId,
+        studentName,
+        assignmentTitle: files[0]?.name || "Attachment",
+        score: 0, // Score extraction logic could be added here
+        rawOutput: result,
+      });
+
       return NextResponse.json({ text: result });
     } finally {
       await page.close();
-      // Note: We don't close the browser connection here if we want to reuse the browser
-      // await browser.close(); 
     }
   } catch (error: any) {
     console.error("[API generate-mcq] Error:", error);

@@ -29,15 +29,14 @@ export const HomeView = ({ user }: { user: UserType }) => {
               Your assessment cycle for Term 2 is now active.
             </p>
           </motion.div>
-          
           <div className="flex gap-4">
             <div className="bg-surface-container-low px-6 py-4 rounded-2xl border border-surface-container-high flex flex-col items-center">
               <span className="text-[10px] font-bold text-tertiary uppercase tracking-widest">Active Viva</span>
-              <span className="text-3xl font-black text-primary">04</span>
+              <span className="text-3xl font-black text-primary">0</span>
             </div>
             <div className="bg-surface-container-low px-6 py-4 rounded-2xl border border-surface-container-high flex flex-col items-center">
               <span className="text-[10px] font-bold text-tertiary uppercase tracking-widest">Graded</span>
-              <span className="text-3xl font-black text-primary">128</span>
+              <span className="text-3xl font-black text-primary">0</span>
             </div>
           </div>
         </div>
@@ -55,7 +54,7 @@ export const HomeView = ({ user }: { user: UserType }) => {
             <div className="flex justify-between items-center mb-10">
               <div>
                 <h2 className="text-2xl font-black text-on-surface">Timeline Archive</h2>
-                <p className="text-sm text-outline">Nov 18 — Nov 25, 2023</p>
+                <p className="text-sm text-outline">No active sessions</p>
               </div>
               <div className="flex gap-2">
                 <button className="p-2 hover:bg-surface-container-high rounded-full transition-colors"><ChevronLeft className="w-5 h-5 text-outline" /></button>
@@ -71,8 +70,8 @@ export const HomeView = ({ user }: { user: UserType }) => {
 
             <div className="grid grid-cols-7 gap-4 flex-1">
               {Array.from({ length: 14 }).map((_, i) => {
-                const day = i + 18;
-                const isToday = i === 1;
+                const day = i + 1;
+                const isToday = false;
                 return (
                   <motion.div 
                     key={i}
@@ -80,11 +79,10 @@ export const HomeView = ({ user }: { user: UserType }) => {
                     className={`aspect-square rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
                       isToday 
                         ? 'bg-primary text-on-primary shadow-xl shadow-primary/20' 
-                        : 'bg-surface-container-highest/20 hover:bg-surface-container-high border border-outline-variant/10 hover:border-primary/30'
+                        : 'bg-surface-container-highest/10 hover:bg-surface-container-high border border-outline-variant/5 hover:border-primary/30'
                     }`}
                   >
-                    <span className={`text-xl font-black tracking-tighter ${isToday ? '' : 'text-on-surface'}`}>{day}</span>
-                    {i % 4 === 0 && !isToday && <div className="w-1 h-1 rounded-full bg-tertiary" />}
+                    <span className={`text-xl font-black tracking-tighter ${isToday ? '' : 'text-on-surface/20'}`}>{day}</span>
                   </motion.div>
                 );
               })}
@@ -103,23 +101,10 @@ export const HomeView = ({ user }: { user: UserType }) => {
             </div>
 
             <div className="space-y-6">
-              {[
-                { time: '09:00 AM', event: 'Senior Thesis Review', type: 'viva', color: 'bg-primary' },
-                { time: '11:30 AM', event: 'Lab Report Grading', type: 'assignment', color: 'bg-tertiary' },
-                { time: '02:00 PM', event: 'Oral Exam - Literature', type: 'viva', color: 'bg-primary' },
-                { time: '04:45 PM', event: 'Batch Upload Sync', type: 'system', color: 'bg-outline-variant' },
-              ].map((item, index) => (
-                <div key={index} className="flex gap-4 group">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-3 h-3 rounded-full ${item.color} shadow-lg ring-4 ring-background group-hover:scale-125 transition-transform`} />
-                    {index !== 3 && <div className="w-px h-full bg-outline-variant/20 my-1" />}
-                  </div>
-                  <div className="pb-4">
-                    <p className="text-xs font-bold text-outline uppercase tracking-wider mb-1">{item.time}</p>
-                    <p className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{item.event}</p>
-                  </div>
-                </div>
-              ))}
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <p className="text-sm font-bold text-outline uppercase tracking-wider mb-1">Quiet Day</p>
+                <p className="text-xs text-outline/50">No events scheduled currently.</p>
+              </div>
             </div>
 
             <button className="w-full mt-8 bg-surface-container-highest/50 border border-outline-variant/10 py-3 rounded-xl text-xs font-bold text-on-surface hover:bg-surface-container-highest transition-all flex items-center justify-center gap-2">
@@ -129,6 +114,7 @@ export const HomeView = ({ user }: { user: UserType }) => {
           </div>
         </div>
       </section>
+
     </div>
   );
 };

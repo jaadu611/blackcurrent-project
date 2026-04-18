@@ -11,7 +11,8 @@ import {
   Play,
   ArrowRight,
   Edit3,
-  Settings2
+  Settings2,
+  History
 } from 'lucide-react';
 
 
@@ -100,14 +101,10 @@ const VivaSessionInterface = () => {
           </div>
 
           <div className="mt-8 space-y-3">
-            <div className="flex items-center p-3 bg-surface-container-high rounded-xl border border-surface-container-highest/30 group">
-              <FileText className="text-primary-container w-5 h-5 mr-3" />
-              <div className="flex-1">
-                <p className="text-xs font-bold text-on-surface">structural_thesis.pdf</p>
-                <p className="text-[10px] text-on-surface-variant">12.4 MB • Complete</p>
+             <div className="flex flex-col items-center justify-center py-6 text-center border border-outline-variant/10 rounded-xl bg-surface-container-high/20">
+                <p className="text-xs font-bold text-outline">No portfolios active</p>
+                <p className="text-[10px] text-outline/50">Upload a student document to begin.</p>
               </div>
-              <X className="text-error/40 group-hover:text-error w-4 h-4 cursor-pointer hover:scale-110 transition-transform" />
-            </div>
           </div>
         </div>
       </section>
@@ -123,37 +120,18 @@ const VivaSessionInterface = () => {
               <h2 className="text-3xl font-extrabold tracking-tighter text-on-background">Generated Questions</h2>
             </div>
             <div className="flex space-x-2">
-              <button className="p-2 rounded-lg bg-surface-container-highest text-primary hover:bg-primary hover:text-on-primary transition-all">
+              <button className="p-2 rounded-lg bg-surface-container-highest text-primary hover:bg-primary hover:text-on-primary transition-all opacity-50 cursor-not-allowed">
                 <RefreshCw className="w-5 h-5" />
               </button>
             </div>
           </div>
 
           <div className="space-y-6">
-            {[
-              { 
-                label: 'Conceptual Inquiry • Q 01', 
-                text: 'How does your material palette reinforce sustainability?',
-                tagText: '5-min Discussion',
-                metaText: 'Theory'
-              },
-              { 
-                label: 'Technical Inquiry • Q 02', 
-                text: 'Identify structural tension points in your proposal.',
-                tagText: '8-min Discussion',
-                metaText: 'Technical'
-              }
-            ].map((q, i) => (
-              <div key={i} className="bg-surface-container-lowest p-6 rounded-xl border border-surface-container-high hover:border-primary/20 transition-all">
-                <label className="block text-[10px] font-bold text-tertiary uppercase tracking-widest mb-2">{q.label}</label>
-                <p className="text-lg font-medium text-on-background leading-relaxed">{q.text}</p>
-                <div className="mt-4 flex items-center space-x-4">
-                  <span className="px-2 py-1 bg-surface-container-highest rounded text-[10px] font-bold text-outline uppercase tracking-wider">{q.tagText}</span>
-                  <span className="px-2 py-1 bg-surface-container-highest rounded text-[10px] font-bold text-outline uppercase tracking-wider">{q.metaText}</span>
-                </div>
-              </div>
-            ))}
-            <button className="w-full bg-primary text-on-primary font-bold py-4 rounded-xl shadow-lg hover:brightness-110 transition-all">
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+               <p className="text-sm font-bold text-outline uppercase tracking-widest">Awaiting Analysis</p>
+               <p className="text-xs text-outline/50 mt-1 max-w-[200px] mx-auto">Automated insights will populate here once a portfolio is processed.</p>
+            </div>
+            <button className="w-full bg-primary text-on-primary font-bold py-4 rounded-xl shadow-lg opacity-30 cursor-not-allowed">
               Initialize Final Session Guide
             </button>
           </div>
@@ -165,91 +143,13 @@ const VivaSessionInterface = () => {
 
 const VivaHistoryInterface = () => {
   return (
-    <div className="space-y-8">
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {[
-          { name: 'Student J', date: 'Oct 14, 2023', score: 92, duration: '24m' },
-          { name: 'Student K', date: 'Oct 12, 2023', score: 85, duration: '18m' },
-        ].map((record, i) => (
-          <motion.div 
-            key={i}
-            whileHover={{ y: -4 }}
-            className="bg-surface-container-low rounded-2xl border border-surface-container-high overflow-hidden shadow-xl"
-          >
-            <div className="p-8 border-b border-outline-variant/5">
-              <div className="flex justify-between items-start mb-6">
-                <div className="flex items-center gap-4">
-                   <div className="w-14 h-14 rounded-full bg-surface-container-high border-2 border-primary/20 flex items-center justify-center text-xl font-bold">
-                      {record.name.charAt(record.name.length - 1)}
-                   </div>
-                  <div>
-                    <h3 className="text-2xl font-bold font-headline">{record.name}</h3>
-                    <p className="text-sm text-outline">{record.date} • {record.duration} Recorded</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-4xl font-black text-primary tracking-tighter">{record.score}</p>
-                  <p className="text-[10px] uppercase font-bold text-tertiary tracking-widest">Final Scored Grade</p>
-                </div>
-              </div>
-
-              <div className="bg-surface-container-lowest p-6 rounded-2xl flex items-center gap-6 border border-outline-variant/10 shadow-inner">
-                <button className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-on-primary shadow-lg hover:scale-105 transition-all active:scale-95">
-                  <Play className="w-5 h-5 ml-0.5" fill="currentColor" />
-                </button>
-                <div className="flex-1 space-y-2">
-                  <div className="flex justify-between items-center px-1">
-                    <span className="text-[10px] font-bold text-outline">08:42 / 24:00</span>
-                    <Settings2 className="w-3 h-3 text-outline/50" />
-                  </div>
-                  <div className="h-1.5 bg-surface-container-highest rounded-full overflow-hidden relative">
-                    <div className="absolute inset-0 flex items-center gap-1.5 px-1 invisible md:visible">
-                      {Array.from({ length: 40 }).map((_, j) => (
-                        <div key={j} className="flex-1 bg-primary/20 h-full rounded-full" />
-                      ))}
-                    </div>
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: '40%' }}
-                      className="h-full bg-primary relative z-10" 
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-8 grid grid-cols-3 gap-6 bg-surface-container-highest/10">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-outline tracking-widest block mb-2">Technical Depth</span>
-                <div className="h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-tertiary w-3/4" />
-                </div>
-              </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-outline tracking-widest block mb-1.5">Reflective Log</span>
-                <div className="h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-primary w-[90%]" />
-                </div>
-              </div>
-              <div>
-                <span className="text-[10px] uppercase font-bold text-outline tracking-widest block mb-1.5">Articulation</span>
-                <div className="h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
-                  <div className="h-full bg-secondary w-1/2" />
-                </div>
-              </div>
-            </div>
-
-            <div className="px-8 py-4 bg-surface-container transition-colors hover:bg-surface-bright flex justify-between items-center border-t border-outline-variant/10">
-              <button className="text-xs font-bold text-primary flex items-center gap-2 hover:underline">
-                View Full Transcription <ArrowRight className="w-3 h-3" />
-              </button>
-              <button className="p-2 text-outline hover:text-primary transition-colors hover:bg-primary/10 rounded-lg">
-                <Edit3 className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+    <div className="space-y-8 text-center py-32">
+       <div className="w-20 h-20 bg-surface-container-low rounded-full flex items-center justify-center mx-auto mb-6 border border-outline-variant/10">
+          <History className="w-10 h-10 text-outline/30" />
+       </div>
+       <h3 className="text-3xl font-black text-on-surface tracking-tighter">History Empty</h3>
+       <p className="text-outline max-w-sm mx-auto">Once examinations are completed and scores are committed, they will be archived here for review.</p>
     </div>
   );
 };
+

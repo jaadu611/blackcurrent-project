@@ -43,14 +43,21 @@ export async function POST(req: Request) {
       }
     }
 
-    // 2. Launch Browser
-    const userDataDir = path.join(os.homedir(), ".playwright-notebooklm");
-    browser = await chromium.launchPersistentContext(userDataDir, {
-      headless: false,
-      viewport: { width: 1280, height: 720 },
-    });
+    // 2. Connect to existing Brave instance (started via npm run debug)
+    try {
+      browser = await chromium.connectOverCDP("http://localhost:9222");
+      console.log("[API] Connected to existing Brave instance on port 9222");
+    } catch (err) {
+      console.warn("[API] Could not connect to Brave on port 9222. Launching new instance...");
+      const userDataDir = path.join(os.homedir(), ".playwright-notebooklm");
+      browser = await chromium.launchPersistentContext(userDataDir, {
+        headless: false,
+        viewport: { width: 1280, height: 720 },
+      });
+    }
 
-    const page = await browser.newPage();
+    const context = browser.contexts ? browser.contexts()[0] : (browser as any);
+    const page = await context.newPage();
     
     // 3. Run Automation
     const notebookTitle = `Grading_${rollNumber}_${Date.now()}`;
@@ -90,7 +97,11 @@ export async function POST(req: Request) {
     console.error("[API check-assignment] Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   } finally {
-    if (browser) await browser.close();
+    if (browser) {
+      if (browser.isConnected && browser.isConnected()) {
+        await browser.close().catch(() => {});
+      }
+    }
     if (tempDir) fs.rmSync(tempDir, { recursive: true, force: true });
   }
 }

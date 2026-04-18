@@ -18,6 +18,7 @@ type UploadedFile = {
   size: string;
   uploadedAt: string;
   status: "processing" | "completed";
+  realFile: File; // keep reference to actual File object
 };
 
 type Quiz = {
@@ -29,23 +30,6 @@ type Quiz = {
   status: "draft" | "published";
   difficulty: "easy" | "medium" | "hard";
 };
-
-const mockFiles: UploadedFile[] = [
-  {
-    id: "1",
-    name: "Introduction to Physics.pdf",
-    size: "2.4 MB",
-    uploadedAt: "2026-04-15",
-    status: "completed",
-  },
-  {
-    id: "2",
-    name: "Chemistry Basics.pdf",
-    size: "1.8 MB",
-    uploadedAt: "2026-04-14",
-    status: "completed",
-  },
-];
 
 const mockQuizzes: Quiz[] = [
   {
@@ -109,13 +93,17 @@ const statusStyles: Record<Quiz["status"], React.CSSProperties> = {
 };
 
 export default function QuizMaterials() {
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>(mockFiles);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [quizzes, setQuizzes] = useState<Quiz[]>(mockQuizzes);
   const [isDragging, setIsDragging] = useState(false);
   const [activeTab, setActiveTab] = useState<"upload" | "quizzes">("upload");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [realFiles, setRealFiles] = useState<File[]>([]);
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
+
+  // All PDFs currently in a "completed" state
+  const readyPdfs = uploadedFiles.filter(
+    (f) => f.status === "completed" && f.name.toLowerCase().endsWith(".pdf"),
+  );
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -129,21 +117,22 @@ export default function QuizMaterials() {
   };
 
   const handleFileUpload = (files: File[]) => {
-    setRealFiles((prev) => [...prev, ...files]);
     files.forEach((file) => {
+      const id =
+        Date.now().toString() + Math.random().toString(36).substr(2, 9);
       const newFile: UploadedFile = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        id,
         name: file.name,
         size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
         uploadedAt: new Date().toISOString().split("T")[0],
         status: "processing",
+        realFile: file,
       };
       setUploadedFiles((prev) => [...prev, newFile]);
+      // Simulate processing
       setTimeout(() => {
         setUploadedFiles((prev) =>
-          prev.map((f) =>
-            f.id === newFile.id ? { ...f, status: "completed" } : f,
-          ),
+          prev.map((f) => (f.id === id ? { ...f, status: "completed" } : f)),
         );
       }, 2000);
     });
@@ -153,31 +142,36 @@ export default function QuizMaterials() {
     if (e.target.files) handleFileUpload(Array.from(e.target.files));
   };
 
+  /**
+   * Sends ALL ready PDFs to the API as separate "pdf" entries.
+   * The API route reads them with formData.getAll("pdf").
+   */
   const generateRealQuiz = async () => {
-    if (realFiles.length === 0) return alert("Please upload files first.");
-    const pdfFile = realFiles.find((f) =>
-      f.name.toLowerCase().endsWith(".pdf"),
-    );
-    if (!pdfFile) return alert("Please upload at least one PDF file.");
+    if (readyPdfs.length === 0)
+      return alert("Please upload at least one PDF file.");
     try {
       setIsGenerating(true);
       const formData = new FormData();
-      formData.append("pdf", pdfFile);
+
+      // Append every ready PDF under the same key — API uses getAll("pdf")
+      readyPdfs.forEach((f) => formData.append("pdf", f.realFile));
       formData.append(
         "title",
         `AI Quiz Pool - ${new Date().toLocaleTimeString()}`,
       );
+
       const res = await fetch("/api/generate-mcq", {
         method: "POST",
         body: formData,
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
+
       setQuizzes((prev) => [
         {
           id: data.quizId ?? Date.now().toString(),
           title: `AI Generated Quiz (${new Date().toLocaleTimeString()})`,
-          materialName: pdfFile.name,
+          materialName: readyPdfs.map((f) => f.name).join(", "),
           questionsCount: data.questions?.length ?? 10,
           createdAt: new Date().toISOString().split("T")[0],
           status: "published",
@@ -193,13 +187,16 @@ export default function QuizMaterials() {
     }
   };
 
-  const generateQuiz = (fileId: string) => {
+  /**
+   * Generate a quiz for a single file by ID (the per-file "Generate Quiz" button).
+   */
+  const generateQuizForFile = (fileId: string) => {
     const file = uploadedFiles.find((f) => f.id === fileId);
     if (!file) return;
     setQuizzes((prev) => [
       {
         id: Date.now().toString(),
-        title: `Quiz for ${file.name.replace(".pdf", "")}`,
+        title: `Quiz for ${file.name.replace(/\.[^.]+$/, "")}`,
         materialName: file.name,
         questionsCount: Math.floor(Math.random() * 15) + 10,
         createdAt: new Date().toISOString().split("T")[0],
@@ -213,7 +210,7 @@ export default function QuizMaterials() {
   const deleteFile = (id: string) =>
     setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
 
-  /* ─── Shared style tokens ─── */
+  /* ─── Style tokens ─── */
   const s = {
     page: {
       minHeight: "100vh",
@@ -399,10 +396,11 @@ export default function QuizMaterials() {
               <div>
                 <p style={s.cardTitle}>Upload Study Materials</p>
                 <p style={s.cardDesc}>
-                  Upload a PDF file to create an AI-generated quiz
+                  Upload one or more PDF files — all will be sent together to
+                  the AI
                 </p>
               </div>
-              {realFiles.length > 0 && (
+              {readyPdfs.length > 0 && (
                 <button
                   style={isGenerating ? s.btnPrimaryDisabled : s.btnPrimary}
                   onClick={generateRealQuiz}
@@ -411,7 +409,7 @@ export default function QuizMaterials() {
                   <Sparkles size={15} />
                   {isGenerating
                     ? "Generating..."
-                    : "Run AI Automator (50 MCQs)"}
+                    : `Run AI Automator (${readyPdfs.length} PDF${readyPdfs.length > 1 ? "s" : ""})`}
                 </button>
               )}
             </div>
@@ -448,13 +446,13 @@ export default function QuizMaterials() {
                 Drag and drop files here
               </p>
               <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16 }}>
-                or click to browse from your computer
+                or click to browse — you can select multiple files
               </p>
               <input
                 type="file"
                 id="file-upload"
                 accept=".pdf,.doc,.docx,.txt"
-                multiple
+                multiple // ← allows multi-select in OS picker
                 onChange={handleFileInputChange}
                 style={{ display: "none" }}
               />
@@ -467,6 +465,28 @@ export default function QuizMaterials() {
                 Supported: PDF, DOC, DOCX, TXT · Max 10 MB per file
               </p>
             </div>
+
+            {/* Summary bar when multiple PDFs are ready */}
+            {readyPdfs.length > 1 && (
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: "10px 16px",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                  borderRadius: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <CheckCircle2 size={16} color="#16a34a" />
+                <p style={{ fontSize: 13, color: "#15803d", margin: 0 }}>
+                  <strong>{readyPdfs.length} PDFs</strong> ready — clicking "Run
+                  AI Automator" will process all of them together.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* File list */}
@@ -589,7 +609,7 @@ export default function QuizMaterials() {
                               }
                             : s.btnRed
                         }
-                        onClick={() => generateQuiz(file.id)}
+                        onClick={() => generateQuizForFile(file.id)}
                         disabled={file.status === "processing"}
                       >
                         <Sparkles size={14} />
@@ -639,8 +659,7 @@ export default function QuizMaterials() {
                 style={s.btnPrimary}
                 onClick={() => setActiveTab("upload")}
               >
-                <Plus size={15} />
-                Upload Materials
+                <Plus size={15} /> Upload Materials
               </button>
             </div>
           ) : (

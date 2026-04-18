@@ -29,6 +29,7 @@ type Quiz = {
   createdAt: string;
   status: "draft" | "published";
   difficulty: "easy" | "medium" | "hard";
+  rawContent?: string;
 };
 
 const mockQuizzes: Quiz[] = [
@@ -99,6 +100,7 @@ export default function QuizMaterials() {
   const [activeTab, setActiveTab] = useState<"upload" | "quizzes">("upload");
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
+  const [viewRawText, setViewRawText] = useState<string | null>(null);
 
   // All PDFs currently in a "completed" state
   const readyPdfs = uploadedFiles.filter(
@@ -176,9 +178,11 @@ export default function QuizMaterials() {
           createdAt: new Date().toISOString().split("T")[0],
           status: "published",
           difficulty: "medium",
+          rawContent: data.rawResult,
         },
         ...prev,
       ]);
+      setViewRawText(data.rawResult); // Auto-show after generation
       alert("AI Generation complete! Check the Generated Quizzes tab.");
     } catch (err: any) {
       alert(`Failed to generate MCQs: ${err.message}`);
@@ -731,6 +735,14 @@ export default function QuizMaterials() {
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    {quiz.rawContent && (
+                      <button
+                        style={s.btnOutline}
+                        onClick={() => setViewRawText(quiz.rawContent!)}
+                      >
+                        <FileText size={14} /> View Raw
+                      </button>
+                    )}
                     <button
                       style={s.btnOutline}
                       onClick={() => setPreviewQuiz(quiz)}
@@ -863,6 +875,67 @@ export default function QuizMaterials() {
                 … and {previewQuiz.questionsCount - 3} more questions
               </p>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ── RAW RESPONSE MODAL ── */}
+      {viewRawText && (
+        <div
+          onClick={() => setViewRawText(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15,23,42,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 60,
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#ffffff",
+              borderRadius: 16,
+              padding: 28,
+              maxWidth: 800,
+              width: "100%",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", margin: 0 }}>
+                Raw AI Response from NotebookLM
+              </h3>
+              <button style={s.btnGhost} onClick={() => setViewRawText(null)}>
+                <span style={{ fontSize: 18, color: "#94a3b8" }}>✕</span>
+              </button>
+            </div>
+            <pre
+              style={{
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: 16,
+                fontSize: 13,
+                color: "#334155",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                fontFamily: "monospace",
+              }}
+            >
+              {viewRawText}
+            </pre>
           </div>
         </div>
       )}

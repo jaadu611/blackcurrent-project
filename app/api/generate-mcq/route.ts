@@ -89,6 +89,7 @@ export async function POST(req: Request) {
         lastUsedIndex: -1,
       })),
       status: "published",
+      rawContent: rawResult,
     });
 
     console.log(
@@ -124,6 +125,7 @@ export async function POST(req: Request) {
       success: true,
       quizId: newQuiz._id,
       questions: selectedQuestions,
+      rawResult, // Add this
     });
   } catch (error: any) {
     console.error("[API generate-mcq] Error:", error);

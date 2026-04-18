@@ -42,6 +42,9 @@ const QuizSchema = new Schema(
             enum: ["easy", "medium", "hard"],
             default: "medium",
         },
+        rawContent: {
+            type: String,
+        },
     },
     { timestamps: true },
 );

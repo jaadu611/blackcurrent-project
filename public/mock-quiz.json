@@ -1,0 +1,53 @@
+{
+  "title": "Refined Mock Quiz",
+  "questions": [
+    {
+      "type": "mcq",
+      "question": "The Gamma function is essentially which of Euler's integrals?",
+      "options": [
+        { "text": "A) First Kind", "isCorrect": false, "followUp": { "type": "voice", "question": "What led you to choose First Kind?" } },
+        { "text": "B) Second Kind", "isCorrect": true, "followUp": null },
+        { "text": "C) Third Kind", "isCorrect": false, "followUp": null },
+        { "text": "D) Mixed kind", "isCorrect": false, "followUp": null }
+      ],
+      "difficulty": 2
+    },
+    {
+      "type": "numeric",
+      "question": "Calculate Γ(3) based on Γ(n+1) = n!",
+      "answer": 2,
+      "difficulty": 3,
+      "followUp": {
+        "type": "numeric",
+        "question": "Now calculate Γ(4).",
+        "answer": 6
+      }
+    },
+    {
+      "type": "voice",
+      "question": "Explain why an improper integral of Type I is defined by its limits.",
+      "difficulty": 4,
+      "followUp": {
+        "type": "voice",
+        "question": "Can a Type I integral ever have finite limits?"
+      }
+    },
+    {
+      "type": "mcq",
+      "question": "Identify the correct relation between Beta (B) and Gamma (G) functions.",
+      "options": [
+        { "text": "A) B(m,n) = G(m) + G(n)", "isCorrect": false, "followUp": { "type": "mcq", "question": "Are you sure? Does the sum of two Γ functions typically equal B?", "options": ["Yes", "No", "Maybe", "Depends"], "answer": "No" } },
+        { "text": "B) B(m,n) = (G(m)G(n))/G(m+n)", "isCorrect": true, "followUp": null },
+        { "text": "C) B(m,n) = G(m)G(n)", "isCorrect": false, "followUp": null },
+        { "text": "D) B(m,n) = G(m+n)", "isCorrect": false, "followUp": null }
+      ],
+      "difficulty": 3
+    },
+    {
+      "type": "voice",
+      "question": "How does the Duplication Formula handle half-integer arguments?",
+      "difficulty": 5,
+      "followUp": null
+    }
+  ]
+}

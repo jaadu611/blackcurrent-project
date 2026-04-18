@@ -13,6 +13,7 @@ import {
   HelpCircle,
   ChevronDown,
   User,
+  FileCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -26,6 +27,8 @@ const navigation = [
   { name: "Class", path: "/class", icon: Users },
   { name: "Quiz Materials", path: "/quiz-materials", icon: BookOpen },
   { name: "Viva Materials", path: "/viva-materials", icon: Volume2 },
+  { name: "Checker", path: "/submissions", icon: FileCheck },
+  { name: "Assignments", path: "/assignments", icon: BookOpen },
 ];
 
 function Sidebar({ pathname }: { pathname: string }) {

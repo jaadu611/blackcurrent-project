@@ -12,6 +12,9 @@ const QuestionSchema = new Schema({
     options: [OptionSchema],
     answer: { type: Schema.Types.Mixed }, // fallback for numeric or other types
     points: { type: Number, default: 10 },
+    difficulty: { type: Number, default: 5 }, // 1-10
+    usageCount: { type: Number, default: 0 },
+    lastUsedIndex: { type: Number, default: -1 },
 });
 
 const QuizSchema = new Schema(

@@ -5,6 +5,7 @@ import Submission from "@/models/Submission";
 import Student from "@/models/Student";
 import fs from "fs";
 import path from "path";
+import { run as transcribeAudio } from "@/lib/assemblyAI";
 
 export async function POST(request: Request) {
     try {
@@ -14,7 +15,6 @@ export async function POST(request: Request) {
         const rollNumber = formData.get("rollNumber") as string;
         const quizId = formData.get("quizId") as string;
         const answersStr = formData.get("answers") as string;
-        const audioFile = formData.get("audio") as File | null;
 
         if (!rollNumber || !quizId || !answersStr) {
             return NextResponse.json(
@@ -24,53 +24,110 @@ export async function POST(request: Request) {
         }
 
         const answers = JSON.parse(answersStr);
-
         const quiz = await Quiz.findById(quizId);
         if (!quiz) {
             return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
         }
 
-        let score = 0;
-        const processedAnswers = quiz.questions.map((q: any, idx: number) => {
-            const userAnswer = answers[idx];
+        const uploadDir = path.join(process.cwd(), "public", "uploads");
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
 
-            // Determine correctness by finding the matching option
+        let totalScore = 0;
+        const processedAnswers = [];
+
+        for (let i = 0; i < quiz.questions.length; i++) {
+            const q = quiz.questions[i];
+            const userAnswerData = answers[i] || {};
+            
+            // userAnswerData could be a string (legacy) or an object
+            const userAnswer = typeof userAnswerData === 'string' ? userAnswerData : userAnswerData.answer;
+            const followUpAnswer = userAnswerData.followUpAnswer;
+
             let isCorrect = false;
+            let transcript = "";
+            let audioUrl = "";
+
+            // Handle main question
             if (q.type === 'mcq') {
                 const labels = ['A', 'B', 'C', 'D'];
-                const labelIndex = labels.indexOf(userAnswer.toUpperCase());
-
+                const labelIndex = labels.indexOf(userAnswer?.toUpperCase());
                 if (labelIndex !== -1 && q.options[labelIndex]) {
                     isCorrect = q.options[labelIndex].isCorrect;
                 } else {
-                    // Fallback to text match
                     const matchingOption = q.options.find((opt: any) => opt.text === userAnswer);
                     isCorrect = matchingOption ? matchingOption.isCorrect : false;
                 }
             } else if (q.type === 'numeric') {
                 isCorrect = (parseFloat(userAnswer) === parseFloat(q.answer));
+            } else if (q.type === 'voice') {
+                const audioFile = formData.get(`audio_q${i}`) as File;
+                if (audioFile) {
+                    const bytes = await audioFile.arrayBuffer();
+                    const fileName = `${rollNumber}_q${i}_${Date.now()}.mp3`;
+                    const filePath = path.join(uploadDir, fileName);
+                    fs.writeFileSync(filePath, Buffer.from(bytes));
+                    audioUrl = `/uploads/${fileName}`;
+                    
+                    // Transcribe
+                    transcript = await transcribeAudio(filePath) || "";
+                }
             }
 
-            if (isCorrect) score += (q.points || 10);
+            if (isCorrect) totalScore += (q.points || 10);
 
-            return {
-                questionIndex: idx,
+            // Handle follow-up
+            let processedFollowUp = null;
+            if (q.followUp) {
+                let fIsCorrect = false;
+                let fTranscript = "";
+                let fAudioUrl = "";
+
+                if (q.followUp.type === 'mcq') {
+                    const labels = ['A', 'B', 'C', 'D'];
+                    const labelIndex = labels.indexOf(followUpAnswer?.toUpperCase());
+                    if (labelIndex !== -1 && q.followUp.options && q.followUp.options[labelIndex]) {
+                        fIsCorrect = q.followUp.options[labelIndex].isCorrect;
+                    } else if (q.followUp.answer) {
+                        fIsCorrect = (followUpAnswer === q.followUp.answer);
+                    }
+                } else if (q.followUp.type === 'numeric') {
+                    fIsCorrect = (parseFloat(followUpAnswer) === parseFloat(q.followUp.answer));
+                } else if (q.followUp.type === 'voice') {
+                    const fAudioFile = formData.get(`audio_q${i}_f`) as File;
+                    if (fAudioFile) {
+                        const bytes = await fAudioFile.arrayBuffer();
+                        const fileName = `${rollNumber}_q${i}_f_${Date.now()}.mp3`;
+                        const filePath = path.join(uploadDir, fileName);
+                        fs.writeFileSync(filePath, Buffer.from(bytes));
+                        fAudioUrl = `/uploads/${fileName}`;
+                        
+                        // Transcribe
+                        fTranscript = await transcribeAudio(filePath) || "";
+                    }
+                }
+
+                if (fIsCorrect) totalScore += 5; // Fixed points for follow-up or use from schema
+
+                processedFollowUp = {
+                    userAnswer: followUpAnswer,
+                    isCorrect: fIsCorrect,
+                    transcript: fTranscript,
+                    audioUrl: fAudioUrl,
+                    points: fIsCorrect ? 5 : 0
+                };
+            }
+
+            processedAnswers.push({
+                questionIndex: i,
+                type: q.type,
                 userAnswer,
                 isCorrect,
-            };
-        });
-
-        let audioUrl = "";
-        if (audioFile) {
-            const bytes = await audioFile.arrayBuffer();
-            const buffer = Buffer.from(bytes);
-
-            const fileName = `${rollNumber}_${quizId}_${Date.now()}.wav`;
-            const uploadDir = path.join(process.cwd(), "public", "uploads");
-            const filePath = path.join(uploadDir, fileName);
-
-            fs.writeFileSync(filePath, buffer);
-            audioUrl = `/uploads/${fileName}`;
+                transcript,
+                audioUrl,
+                followUp: processedFollowUp
+            });
         }
 
         let student = await Student.findOne({ rollName: rollNumber });
@@ -86,16 +143,15 @@ export async function POST(request: Request) {
             rollNumber,
             quizId,
             answers: processedAnswers,
-            score,
+            score: totalScore,
             totalQuestions: quiz.questions.length,
-            audioUrl,
         });
 
         return NextResponse.json({
-            message: "Submission received successfully",
+            message: "Submission received and processed successfully",
             submissionId: submission._id,
-            score,
-            totalPoints: quiz.questions.length * 10,
+            score: totalScore,
+            totalQuestions: quiz.questions.length,
         }, { status: 201 });
 
     } catch (error: any) {

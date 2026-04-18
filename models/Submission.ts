@@ -18,8 +18,18 @@ const SubmissionSchema = new Schema(
         answers: [
             {
                 questionIndex: Number,
+                type: { type: String }, // mcq, numeric, voice
                 userAnswer: String,
                 isCorrect: Boolean,
+                transcript: String,
+                audioUrl: String,
+                followUp: {
+                    userAnswer: String,
+                    isCorrect: Boolean,
+                    transcript: String,
+                    audioUrl: String,
+                    points: Number,
+                }
             },
         ],
         score: {

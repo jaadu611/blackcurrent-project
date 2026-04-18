@@ -1,11 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Upload, FileText, CheckCircle, AlertTriangle, BrainCircuit, Loader2, User, BookOpen } from "lucide-react";
+import { Upload, FileText, CheckCircle, AlertTriangle, BrainCircuit, Loader2, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 export default function AssignmentsPage() {
@@ -30,25 +28,12 @@ export default function AssignmentsPage() {
     formData.append("studentName", studentName);
     formData.append("rollNumber", rollNumber);
     formData.append("title", title);
-    
-    Array.from(sourceFiles).forEach((file, index) => {
-      formData.append(`source_${index}`, file);
-    });
-    
-    Array.from(studentFiles).forEach((file, index) => {
-      formData.append(`student_${index}`, file);
-    });
+    Array.from(sourceFiles).forEach((file, i) => formData.append(`source_${i}`, file));
+    Array.from(studentFiles).forEach((file, i) => formData.append(`student_${i}`, file));
 
     try {
-      const res = await fetch("/api/check-assignment", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to check assignment");
-      }
-
+      const res = await fetch("/api/check-assignment", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Failed to check assignment");
       const data = await res.json();
       setResult(data);
       toast.success("Assignment checked successfully!");
@@ -62,166 +47,162 @@ export default function AssignmentsPage() {
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-3">
-            <BookOpen className="w-8 h-8 text-black" />
-            Assignment Checker
-          </h1>
-          <p className="text-gray-500 mt-1">
-            Automated grading and feedback powered by NotebookLM.
-          </p>
+
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <BookOpen className="w-6 h-6" />
+          Assignment Checker
+        </h1>
+        <p className="text-gray-500 text-sm mt-1">
+          Upload source materials and student submission. NotebookLM will grade it automatically.
+        </p>
+      </div>
+
+      {/* Form Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        {/* Left: Details */}
+        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+          <h2 className="font-semibold text-gray-800 text-base">Assignment Details</h2>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Title</label>
+            <Input
+              placeholder="e.g., Improper Integrals Quiz"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">Student Name</label>
+              <Input
+                placeholder="John Doe"
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">Roll Number</label>
+              <Input
+                placeholder="S12345"
+                value={rollNumber}
+                onChange={(e) => setRollNumber(e.target.value)}
+                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Uploads */}
+        <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+          <h2 className="font-semibold text-gray-800 text-base">File Uploads</h2>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+              <Upload className="w-4 h-4" /> Source Material (Reference PDF)
+            </label>
+            <input
+              type="file"
+              multiple
+              onChange={(e) => setSourceFiles(e.target.files)}
+              className="w-full text-sm text-gray-700 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-gray-100 file:text-gray-700 file:font-medium hover:file:bg-gray-200 cursor-pointer"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+              <FileText className="w-4 h-4" /> Student Submission
+            </label>
+            <input
+              type="file"
+              multiple
+              onChange={(e) => setStudentFiles(e.target.files)}
+              className="w-full text-sm text-gray-700 file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:bg-gray-100 file:text-gray-700 file:font-medium hover:file:bg-gray-200 cursor-pointer"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-gray-200 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">Assignment Details</CardTitle>
-            <CardDescription>Enter basic information about the submission.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Assignment Title</label>
-              <Input 
-                placeholder="e.g., Improper Integrals Quiz" 
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Student Name</label>
-                <Input 
-                  placeholder="John Doe" 
-                  value={studentName}
-                  onChange={(e) => setStudentName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Roll Number</label>
-                <Input 
-                  placeholder="S12345" 
-                  value={rollNumber}
-                  onChange={(e) => setRollNumber(e.target.value)}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-gray-200 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">File Uploads</CardTitle>
-            <CardDescription>Upload source materials and student work.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-                <Upload className="w-4 h-4" /> Source Materials (Reference PDF)
-              </label>
-              <Input 
-                type="file" 
-                multiple 
-                onChange={(e) => setSourceFiles(e.target.files)}
-                className="cursor-pointer"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2">
-              <FileText className="w-4 h-4" /> Student Submission
-              </label>
-              <Input 
-                type="file" 
-                multiple 
-                onChange={(e) => setStudentFiles(e.target.files)}
-                className="cursor-pointer"
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
+      {/* Submit Button */}
       <div className="flex justify-center">
-        <Button 
-          size="lg" 
-          className="bg-black text-white px-12 h-14 text-lg font-bold rounded-full hover:scale-105 transition-all shadow-xl"
+        <Button
+          size="lg"
+          className="bg-black text-white px-10 font-semibold rounded-lg hover:bg-gray-800"
           onClick={handleCheck}
           disabled={isChecking}
         >
           {isChecking ? (
-            <>
-              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              Checking with NotebookLM...
-            </>
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Checking with NotebookLM...</>
           ) : (
-            <>
-              <BrainCircuit className="mr-2 h-6 w-6" />
-              Run AI Check
-            </>
+            <><BrainCircuit className="mr-2 h-5 w-5" />Run AI Check</>
           )}
         </Button>
       </div>
 
+      {/* Result */}
       {result && (
-        <Card className="border-black border-2 bg-gray-50/30 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <CardHeader className="bg-white border-b border-gray-100 flex flex-row items-center justify-between py-6">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          
+          {/* Grade Header */}
+          <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
             <div>
-              <CardTitle className="text-2xl font-black">Grading Report</CardTitle>
-              <CardDescription>AI-generated evaluation based on source materials.</CardDescription>
+              <h2 className="text-lg font-bold text-gray-900">Grading Report</h2>
+              <p className="text-sm text-gray-500">AI evaluation based on source materials.</p>
             </div>
             <div className="text-right">
-              <div className="text-5xl font-black text-black leading-none">
-                {result.grade}
-              </div>
-              <div className="text-[10px] uppercase font-bold text-gray-400 mt-1 tracking-widest">
-                Assigned Grade
-              </div>
+              <div className="text-4xl font-black text-gray-900">{result.grade}</div>
+              <div className="text-xs text-gray-400 uppercase tracking-wide">Grade</div>
             </div>
-          </CardHeader>
-          <CardContent className="p-8 space-y-8">
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500 flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" /> Overall Performance
+          </div>
+
+          <div className="p-6 space-y-6">
+
+            {/* Overall Feedback */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-2 flex items-center gap-1">
+                <CheckCircle className="w-3.5 h-3.5" /> Overall Feedback
               </h3>
-              <p className="text-lg text-gray-800 leading-relaxed font-medium">
-                {result.overallFeedback}
-              </p>
+              <p className="text-gray-800 leading-relaxed">{result.overallFeedback}</p>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-gray-500">
-                Detailed Aspect Analysis
+            {/* Detailed Reviews */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">
+                Aspect-by-Aspect Review
               </h3>
-              <div className="grid grid-cols-1 gap-4">
-                {result.detailedReviews.map((review: any, idx: number) => (
-                  <div 
-                    key={idx} 
-                    className={`p-4 rounded-xl border-l-4 bg-white shadow-sm ${review.needsUpdate ? 'border-l-amber-500' : 'border-l-green-500'}`}
+              <div className="space-y-3">
+                {result.detailedReviews?.map((review: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={`p-4 rounded-lg border-l-4 bg-gray-50 ${review.needsUpdate ? "border-l-amber-400" : "border-l-green-400"}`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-gray-900">{review.aspect}</span>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-gray-900 text-sm">{review.aspect}</span>
                       {review.needsUpdate && (
-                        <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
-                          <AlertTriangle className="w-3 h-3 mr-1" /> Needs Update
-                        </Badge>
+                        <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full font-medium">
+                          <AlertTriangle className="w-3 h-3" /> Needs Update
+                        </span>
                       )}
                     </div>
-                    <p className="text-gray-600 text-sm leading-relaxed mb-3">
-                      {review.review}
-                    </p>
+                    <p className="text-gray-700 text-sm leading-relaxed">{review.review}</p>
                     {review.suggestion && (
-                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 italic text-xs text-gray-500 mt-2">
-                        <span className="font-bold text-gray-700 not-italic mr-1">Suggestion:</span>
+                      <p className="mt-2 text-xs text-gray-500 bg-white border border-gray-100 rounded p-2">
+                        <span className="font-semibold text-gray-700">Suggestion: </span>
                         {review.suggestion}
-                      </div>
+                      </p>
                     )}
                   </div>
                 ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
+
+          </div>
+        </div>
       )}
     </div>
   );

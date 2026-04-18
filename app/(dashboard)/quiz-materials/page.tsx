@@ -11,30 +11,6 @@ import {
   Plus,
   Sparkles,
 } from "lucide-react";
-import { Button } from "../../../components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../../../components/ui/card";
-import { Badge } from "../../../components/ui/badge";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../../../components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../../../components/ui/dialog";
-import { Progress } from "../../../components/ui/progress";
 
 type UploadedFile = {
   id: string;
@@ -54,7 +30,6 @@ type Quiz = {
   difficulty: "easy" | "medium" | "hard";
 };
 
-// Mock data
 const mockFiles: UploadedFile[] = [
   {
     id: "1",
@@ -102,30 +77,55 @@ const mockQuizzes: Quiz[] = [
   },
 ];
 
+const difficultyStyles: Record<Quiz["difficulty"], React.CSSProperties> = {
+  easy: {
+    background: "#dcfce7",
+    color: "#15803d",
+    border: "1px solid #bbf7d0",
+  },
+  medium: {
+    background: "#fef9c3",
+    color: "#a16207",
+    border: "1px solid #fde68a",
+  },
+  hard: {
+    background: "#fee2e2",
+    color: "#b91c1c",
+    border: "1px solid #fecaca",
+  },
+};
+
+const statusStyles: Record<Quiz["status"], React.CSSProperties> = {
+  published: {
+    background: "#dbeafe",
+    color: "#1d4ed8",
+    border: "1px solid #bfdbfe",
+  },
+  draft: {
+    background: "#f1f5f9",
+    color: "#475569",
+    border: "1px solid #e2e8f0",
+  },
+};
+
 export default function QuizMaterials() {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>(mockFiles);
   const [quizzes, setQuizzes] = useState<Quiz[]>(mockQuizzes);
   const [isDragging, setIsDragging] = useState(false);
-  const [, setSelectedQuiz] = useState<Quiz | null>(null);
-
+  const [activeTab, setActiveTab] = useState<"upload" | "quizzes">("upload");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [, setMcqResult] = useState("");
   const [realFiles, setRealFiles] = useState<File[]>([]);
+  const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
   };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
+  const handleDragLeave = () => setIsDragging(false);
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files);
-    handleFileUpload(files);
+    handleFileUpload(Array.from(e.dataTransfer.files));
   };
 
   const handleFileUpload = (files: File[]) => {
@@ -139,8 +139,6 @@ export default function QuizMaterials() {
         status: "processing",
       };
       setUploadedFiles((prev) => [...prev, newFile]);
-
-      // Simulate processing completion for UI purposes
       setTimeout(() => {
         setUploadedFiles((prev) =>
           prev.map((f) =>
@@ -152,40 +150,43 @@ export default function QuizMaterials() {
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      handleFileUpload(Array.from(e.target.files));
-    }
+    if (e.target.files) handleFileUpload(Array.from(e.target.files));
   };
 
   const generateRealQuiz = async () => {
     if (realFiles.length === 0) return alert("Please upload files first.");
+    const pdfFile = realFiles.find((f) =>
+      f.name.toLowerCase().endsWith(".pdf"),
+    );
+    if (!pdfFile) return alert("Please upload at least one PDF file.");
     try {
       setIsGenerating(true);
       const formData = new FormData();
-      realFiles.forEach((file) => formData.append("files", file));
-
+      formData.append("pdf", pdfFile);
+      formData.append(
+        "title",
+        `AI Quiz Pool - ${new Date().toLocaleTimeString()}`,
+      );
       const res = await fetch("/api/generate-mcq", {
         method: "POST",
         body: formData,
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-
-      // Successfully generated
-      const newQuiz: Quiz = {
-        id: Date.now().toString(),
-        title: `AI Generated Quiz (${new Date().toLocaleTimeString()})`,
-        materialName: realFiles.map((f) => f.name).join(", "),
-        questionsCount: 50, // Based on the API's intent
-        createdAt: new Date().toISOString().split("T")[0],
-        status: "published",
-        difficulty: "medium",
-      };
-      setQuizzes((prev) => [newQuiz, ...prev]);
-      setMcqResult(data.text || "Quiz generated successfully!");
+      setQuizzes((prev) => [
+        {
+          id: data.quizId ?? Date.now().toString(),
+          title: `AI Generated Quiz (${new Date().toLocaleTimeString()})`,
+          materialName: pdfFile.name,
+          questionsCount: data.questions?.length ?? 10,
+          createdAt: new Date().toISOString().split("T")[0],
+          status: "published",
+          difficulty: "medium",
+        },
+        ...prev,
+      ]);
       alert("AI Generation complete! Check the Generated Quizzes tab.");
     } catch (err: any) {
-      console.error(err);
       alert(`Failed to generate MCQs: ${err.message}`);
     } finally {
       setIsGenerating(false);
@@ -195,297 +196,657 @@ export default function QuizMaterials() {
   const generateQuiz = (fileId: string) => {
     const file = uploadedFiles.find((f) => f.id === fileId);
     if (!file) return;
-
-    const newQuiz: Quiz = {
-      id: Date.now().toString(),
-      title: `Quiz for ${file.name.replace(".pdf", "")}`,
-      materialName: file.name,
-      questionsCount: Math.floor(Math.random() * 15) + 10,
-      createdAt: new Date().toISOString().split("T")[0],
-      status: "draft",
-      difficulty: "medium",
-    };
-
-    setQuizzes((prev) => [newQuiz, ...prev]);
+    setQuizzes((prev) => [
+      {
+        id: Date.now().toString(),
+        title: `Quiz for ${file.name.replace(".pdf", "")}`,
+        materialName: file.name,
+        questionsCount: Math.floor(Math.random() * 15) + 10,
+        createdAt: new Date().toISOString().split("T")[0],
+        status: "draft",
+        difficulty: "medium",
+      },
+      ...prev,
+    ]);
   };
 
-  const deleteFile = (id: string) => {
+  const deleteFile = (id: string) =>
     setUploadedFiles((prev) => prev.filter((f) => f.id !== id));
+
+  /* ─── Shared style tokens ─── */
+  const s = {
+    page: {
+      minHeight: "100vh",
+      background: "#f1f5f9",
+      padding: 32,
+    } as React.CSSProperties,
+    card: {
+      background: "#ffffff",
+      border: "1px solid #e2e8f0",
+      borderRadius: 14,
+      boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+      padding: 24,
+    } as React.CSSProperties,
+    h2: {
+      fontSize: 26,
+      fontWeight: 700,
+      color: "#0f172a",
+      margin: 0,
+    } as React.CSSProperties,
+    subtitle: {
+      fontSize: 14,
+      color: "#64748b",
+      marginTop: 4,
+    } as React.CSSProperties,
+    cardTitle: {
+      fontSize: 16,
+      fontWeight: 700,
+      color: "#0f172a",
+      margin: 0,
+    } as React.CSSProperties,
+    cardDesc: {
+      fontSize: 13,
+      color: "#64748b",
+      marginTop: 2,
+    } as React.CSSProperties,
+    badge: {
+      display: "inline-flex",
+      alignItems: "center",
+      padding: "3px 10px",
+      borderRadius: 99,
+      fontSize: 12,
+      fontWeight: 600,
+    } as React.CSSProperties,
+    btnPrimary: {
+      background: "#dc2626",
+      color: "#ffffff",
+      border: "none",
+      padding: "10px 18px",
+      borderRadius: 8,
+      fontWeight: 600,
+      fontSize: 14,
+      cursor: "pointer",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 7,
+    } as React.CSSProperties,
+    btnPrimaryDisabled: {
+      background: "#fca5a5",
+      color: "#ffffff",
+      border: "none",
+      padding: "10px 18px",
+      borderRadius: 8,
+      fontWeight: 600,
+      fontSize: 14,
+      cursor: "not-allowed",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 7,
+    } as React.CSSProperties,
+    btnOutline: {
+      background: "#ffffff",
+      color: "#374151",
+      border: "1px solid #d1d5db",
+      padding: "8px 14px",
+      borderRadius: 8,
+      fontWeight: 500,
+      fontSize: 13,
+      cursor: "pointer",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+    } as React.CSSProperties,
+    btnRed: {
+      background: "#fef2f2",
+      color: "#dc2626",
+      border: "1px solid #fecaca",
+      padding: "8px 14px",
+      borderRadius: 8,
+      fontWeight: 500,
+      fontSize: 13,
+      cursor: "pointer",
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 6,
+    } as React.CSSProperties,
+    btnGhost: {
+      background: "transparent",
+      color: "#94a3b8",
+      border: "none",
+      padding: 8,
+      borderRadius: 8,
+      cursor: "pointer",
+      display: "inline-flex",
+      alignItems: "center",
+    } as React.CSSProperties,
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h2 className="text-gray-900 mb-2">Quiz Materials</h2>
-        <p className="text-sm text-gray-600">
+    <div style={s.page}>
+      {/* Header */}
+      <div style={{ marginBottom: 28 }}>
+        <h2 style={s.h2}>Quiz Materials</h2>
+        <p style={s.subtitle}>
           Upload study materials and let AI generate quizzes automatically
         </p>
       </div>
 
-      <Tabs defaultValue="upload" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="upload">Upload Materials</TabsTrigger>
-          <TabsTrigger value="quizzes">
-            Generated Quizzes
-            <Badge variant="secondary" className="ml-2 bg-red-100 text-red-700 hover:bg-red-200">
-              {quizzes.length}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
+      {/* Tabs */}
+      <div
+        style={{
+          display: "flex",
+          gap: 4,
+          padding: 4,
+          background: "#e2e8f0",
+          borderRadius: 10,
+          width: "fit-content",
+          marginBottom: 24,
+        }}
+      >
+        {(["upload", "quizzes"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: "8px 18px",
+              fontWeight: 600,
+              fontSize: 14,
+              border: "none",
+              cursor: "pointer",
+              borderRadius: 8,
+              background: activeTab === tab ? "#0f172a" : "transparent",
+              color: activeTab === tab ? "#f8fafc" : "#64748b",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              transition: "all 0.15s",
+            }}
+          >
+            {tab === "upload" ? (
+              "Upload Materials"
+            ) : (
+              <>
+                Generated Quizzes
+                <span
+                  style={{
+                    background: "#dc2626",
+                    color: "#fff",
+                    borderRadius: 99,
+                    padding: "1px 8px",
+                    fontSize: 12,
+                  }}
+                >
+                  {quizzes.length}
+                </span>
+              </>
+            )}
+          </button>
+        ))}
+      </div>
 
-        <TabsContent value="upload" className="space-y-6">
-          {/* Upload Section */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Upload Study Materials</CardTitle>
-                  <CardDescription>
-                    Upload PDF, DOC, DOCX, or TXT files to create AI-generated
-                    quizzes
-                  </CardDescription>
-                </div>
-                {realFiles.length > 0 && (
-                  <Button
-                    onClick={generateRealQuiz}
-                    disabled={isGenerating}
-                    className="bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-100"
-                  >
-                    {isGenerating
-                      ? "Generating..."
-                      : "Run AI Automator (50 MCQs)"}
-                  </Button>
-                )}
+      {/* ── UPLOAD TAB ── */}
+      {activeTab === "upload" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div style={s.card}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                marginBottom: 20,
+              }}
+            >
+              <div>
+                <p style={s.cardTitle}>Upload Study Materials</p>
+                <p style={s.cardDesc}>
+                  Upload a PDF file to create an AI-generated quiz
+                </p>
               </div>
-            </CardHeader>
-            <CardContent>
+              {realFiles.length > 0 && (
+                <button
+                  style={isGenerating ? s.btnPrimaryDisabled : s.btnPrimary}
+                  onClick={generateRealQuiz}
+                  disabled={isGenerating}
+                >
+                  <Sparkles size={15} />
+                  {isGenerating
+                    ? "Generating..."
+                    : "Run AI Automator (50 MCQs)"}
+                </button>
+              )}
+            </div>
+
+            {/* Drop zone */}
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              style={{
+                border: `2px dashed ${isDragging ? "#dc2626" : "#cbd5e1"}`,
+                borderRadius: 12,
+                padding: "48px 24px",
+                textAlign: "center",
+                background: isDragging ? "#fef2f2" : "#f8fafc",
+                transition: "all 0.2s",
+              }}
+            >
               <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`
-                  border-2 border-dashed rounded-lg p-12 text-center transition-colors
-                  ${
-                    isDragging
-                      ? "border-red-500 bg-red-50/50"
-                      : "border-gray-200 bg-gray-50/50"
-                  }
-                `}
+                style={{
+                  width: 48,
+                  height: 48,
+                  background: "#f1f5f9",
+                  borderRadius: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 14px",
+                }}
               >
-                <Upload className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="mb-2">Drag and drop files here</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  or click to browse from your computer
-                </p>
-                <input
-                  type="file"
-                  id="file-upload"
-                  className="hidden"
-                  accept=".pdf,.doc,.docx,.txt"
-                  multiple
-                  onChange={handleFileInputChange}
-                />
-                <label htmlFor="file-upload">
-                  <Button variant="default" className="cursor-pointer" asChild>
-                    <span>Choose Files</span>
-                  </Button>
-                </label>
-                <p className="text-xs text-gray-500 mt-4">
-                  Supported formats: PDF, DOC, DOCX, TXT (Max 10MB per file)
-                </p>
+                <Upload size={22} color="#64748b" />
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Uploaded Files */}
-          {uploadedFiles.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Uploaded Materials</CardTitle>
-                <CardDescription>
-                  {uploadedFiles.length} file(s) uploaded
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {uploadedFiles.map((file) => (
-                    <div
-                      key={file.id}
-                      className="flex items-center justify-between p-4 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow"
-                    >
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <FileText className="w-5 h-5 text-blue-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm truncate">{file.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {file.size} • Uploaded {file.uploadedAt}
-                          </p>
-                        </div>
-                        {file.status === "processing" ? (
-                          <div className="w-32">
-                            <Progress value={60} className="h-2" />
-                            <p className="text-xs text-gray-500 mt-1">
-                              Processing...
-                            </p>
-                          </div>
-                        ) : (
-                          <CheckCircle2 className="w-5 h-5 text-green-500" />
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 ml-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => generateQuiz(file.id)}
-                          disabled={file.status === "processing"}
-                          className="border-red-100 text-red-600 hover:bg-red-50 hover:border-red-200"
-                        >
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          Generate Quiz
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteFile(file.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="quizzes" className="space-y-6">
-          {/* Quiz List */}
-          <div className="grid gap-4">
-            {quizzes.map((quiz) => (
-              <Card key={quiz.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-gray-900">{quiz.title}</h3>
-                        <Badge
-                          variant={
-                            quiz.status === "published"
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {quiz.status}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className={
-                            quiz.difficulty === "easy"
-                              ? "border-green-500 text-green-700"
-                              : quiz.difficulty === "medium"
-                                ? "border-yellow-500 text-yellow-700"
-                                : "border-red-500 text-red-700"
-                          }
-                        >
-                          {quiz.difficulty}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-3">
-                        Based on: {quiz.materialName}
-                      </p>
-                      <div className="flex items-center gap-6 text-sm text-gray-500">
-                        <span>{quiz.questionsCount} questions</span>
-                        <span>Created {quiz.createdAt}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedQuiz(quiz)}
-                          >
-                            <Eye className="w-4 h-4 mr-2" />
-                            Preview
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-                          <DialogHeader>
-                            <DialogTitle>{quiz.title}</DialogTitle>
-                            <DialogDescription>
-                              {quiz.questionsCount} questions •{" "}
-                              {quiz.difficulty} difficulty
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4 mt-4">
-                            {/* Sample Questions */}
-                            {[1, 2, 3].map((num) => (
-                              <div
-                                key={num}
-                                className="p-4 bg-gray-50 rounded-lg"
-                              >
-                                <p className="mb-3">
-                                  {num}. What is the main concept discussed in
-                                  chapter {num}?
-                                </p>
-                                <div className="space-y-2 ml-4">
-                                  <label className="flex items-center gap-2 text-sm">
-                                    <input type="radio" name={`q${num}`} />
-                                    <span>Option A</span>
-                                  </label>
-                                  <label className="flex items-center gap-2 text-sm">
-                                    <input type="radio" name={`q${num}`} />
-                                    <span>Option B</span>
-                                  </label>
-                                  <label className="flex items-center gap-2 text-sm">
-                                    <input type="radio" name={`q${num}`} />
-                                    <span>Option C</span>
-                                  </label>
-                                  <label className="flex items-center gap-2 text-sm">
-                                    <input type="radio" name={`q${num}`} />
-                                    <span>Option D</span>
-                                  </label>
-                                </div>
-                              </div>
-                            ))}
-                            <p className="text-sm text-gray-500 text-center">
-                              ... and {quiz.questionsCount - 3} more questions
-                            </p>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                      <Button variant="outline" size="sm">
-                        <Download className="w-4 h-4 mr-2" />
-                        Export
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+              <p style={{ fontWeight: 600, color: "#1e293b", marginBottom: 4 }}>
+                Drag and drop files here
+              </p>
+              <p style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16 }}>
+                or click to browse from your computer
+              </p>
+              <input
+                type="file"
+                id="file-upload"
+                accept=".pdf,.doc,.docx,.txt"
+                multiple
+                onChange={handleFileInputChange}
+                style={{ display: "none" }}
+              />
+              <label htmlFor="file-upload">
+                <span style={{ ...s.btnOutline, cursor: "pointer" }}>
+                  Choose Files
+                </span>
+              </label>
+              <p style={{ fontSize: 12, color: "#94a3b8", marginTop: 14 }}>
+                Supported: PDF, DOC, DOCX, TXT · Max 10 MB per file
+              </p>
+            </div>
           </div>
 
-          {quizzes.length === 0 && (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <Sparkles className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-                <h3 className="mb-2">No quizzes generated yet</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Upload study materials and generate your first AI-powered quiz
-                </p>
-                <Button>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Upload Materials
-                </Button>
-              </CardContent>
-            </Card>
+          {/* File list */}
+          {uploadedFiles.length > 0 && (
+            <div style={s.card}>
+              <p style={{ ...s.cardTitle, marginBottom: 4 }}>
+                Uploaded Materials
+              </p>
+              <p style={{ ...s.cardDesc, marginBottom: 16 }}>
+                {uploadedFiles.length} file(s) uploaded
+              </p>
+              <div
+                style={{ display: "flex", flexDirection: "column", gap: 10 }}
+              >
+                {uploadedFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "14px 16px",
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 10,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        flex: 1,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 40,
+                          height: 40,
+                          background: "#dbeafe",
+                          borderRadius: 10,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                        }}
+                      >
+                        <FileText size={18} color="#2563eb" />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 500,
+                            color: "#1e293b",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {file.name}
+                        </p>
+                        <p style={{ fontSize: 12, color: "#94a3b8" }}>
+                          {file.size} · Uploaded {file.uploadedAt}
+                        </p>
+                      </div>
+                      {file.status === "processing" ? (
+                        <div style={{ textAlign: "right", marginRight: 4 }}>
+                          <div
+                            style={{
+                              background: "#e2e8f0",
+                              borderRadius: 99,
+                              height: 6,
+                              width: 100,
+                              overflow: "hidden",
+                            }}
+                          >
+                            <div
+                              style={{
+                                background: "#dc2626",
+                                height: "100%",
+                                width: "60%",
+                                borderRadius: 99,
+                              }}
+                            />
+                          </div>
+                          <p
+                            style={{
+                              fontSize: 11,
+                              color: "#94a3b8",
+                              marginTop: 4,
+                            }}
+                          >
+                            Processing...
+                          </p>
+                        </div>
+                      ) : (
+                        <CheckCircle2
+                          size={20}
+                          color="#16a34a"
+                          style={{ flexShrink: 0 }}
+                        />
+                      )}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginLeft: 16,
+                      }}
+                    >
+                      <button
+                        style={
+                          file.status === "processing"
+                            ? {
+                                ...s.btnRed,
+                                opacity: 0.5,
+                                cursor: "not-allowed",
+                              }
+                            : s.btnRed
+                        }
+                        onClick={() => generateQuiz(file.id)}
+                        disabled={file.status === "processing"}
+                      >
+                        <Sparkles size={14} />
+                        Generate Quiz
+                      </button>
+                      <button
+                        style={s.btnGhost}
+                        onClick={() => deleteFile(file.id)}
+                      >
+                        <Trash2 size={16} color="#94a3b8" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
+
+      {/* ── QUIZZES TAB ── */}
+      {activeTab === "quizzes" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {quizzes.length === 0 ? (
+            <div style={{ ...s.card, padding: 64, textAlign: "center" }}>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  background: "#f1f5f9",
+                  borderRadius: 14,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 16px",
+                }}
+              >
+                <Sparkles size={24} color="#94a3b8" />
+              </div>
+              <p style={{ fontWeight: 600, color: "#1e293b", marginBottom: 6 }}>
+                No quizzes generated yet
+              </p>
+              <p style={{ fontSize: 14, color: "#64748b", marginBottom: 20 }}>
+                Upload study materials and generate your first AI-powered quiz
+              </p>
+              <button
+                style={s.btnPrimary}
+                onClick={() => setActiveTab("upload")}
+              >
+                <Plus size={15} />
+                Upload Materials
+              </button>
+            </div>
+          ) : (
+            quizzes.map((quiz) => (
+              <div
+                key={quiz.id}
+                style={{ ...s.card, transition: "box-shadow 0.15s" }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    justifyContent: "space-between",
+                    gap: 16,
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 8,
+                        marginBottom: 8,
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 700,
+                          color: "#0f172a",
+                        }}
+                      >
+                        {quiz.title}
+                      </span>
+                      <span
+                        style={{ ...s.badge, ...statusStyles[quiz.status] }}
+                      >
+                        {quiz.status}
+                      </span>
+                      <span
+                        style={{
+                          ...s.badge,
+                          ...difficultyStyles[quiz.difficulty],
+                        }}
+                      >
+                        {quiz.difficulty}
+                      </span>
+                    </div>
+                    <p
+                      style={{
+                        fontSize: 13,
+                        color: "#64748b",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Based on: {quiz.materialName}
+                    </p>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 20,
+                        fontSize: 13,
+                        color: "#94a3b8",
+                      }}
+                    >
+                      <span>{quiz.questionsCount} questions</span>
+                      <span>Created {quiz.createdAt}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                    <button
+                      style={s.btnOutline}
+                      onClick={() => setPreviewQuiz(quiz)}
+                    >
+                      <Eye size={14} /> Preview
+                    </button>
+                    <button style={s.btnOutline}>
+                      <Download size={14} /> Export
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* ── PREVIEW MODAL ── */}
+      {previewQuiz && (
+        <div
+          onClick={() => setPreviewQuiz(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15,23,42,0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+            padding: 24,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#ffffff",
+              borderRadius: 16,
+              padding: 28,
+              maxWidth: 640,
+              width: "100%",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                marginBottom: 20,
+              }}
+            >
+              <div>
+                <h3
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: "#0f172a",
+                    margin: 0,
+                  }}
+                >
+                  {previewQuiz.title}
+                </h3>
+                <p style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
+                  {previewQuiz.questionsCount} questions ·{" "}
+                  {previewQuiz.difficulty} difficulty
+                </p>
+              </div>
+              <button style={s.btnGhost} onClick={() => setPreviewQuiz(null)}>
+                <span style={{ fontSize: 18, color: "#94a3b8" }}>✕</span>
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {[1, 2, 3].map((num) => (
+                <div
+                  key={num}
+                  style={{
+                    padding: 16,
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 10,
+                  }}
+                >
+                  <p
+                    style={{
+                      fontWeight: 600,
+                      color: "#1e293b",
+                      marginBottom: 12,
+                      fontSize: 14,
+                    }}
+                  >
+                    {num}. What is the main concept discussed in chapter {num}?
+                  </p>
+                  <div
+                    style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                  >
+                    {["Option A", "Option B", "Option C", "Option D"].map(
+                      (opt) => (
+                        <label
+                          key={opt}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                            padding: "8px 12px",
+                            borderRadius: 8,
+                            background: "#ffffff",
+                            border: "1px solid #e2e8f0",
+                            fontSize: 14,
+                            color: "#374151",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name={`q${num}`}
+                            style={{ accentColor: "#dc2626" }}
+                          />
+                          {opt}
+                        </label>
+                      ),
+                    )}
+                  </div>
+                </div>
+              ))}
+              <p
+                style={{ fontSize: 13, color: "#94a3b8", textAlign: "center" }}
+              >
+                … and {previewQuiz.questionsCount - 3} more questions
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

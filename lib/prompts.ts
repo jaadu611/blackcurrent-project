@@ -1,5 +1,5 @@
 export const SYSTEM_PROMPT = `
-Please generate exactly 15 questions based solely on the provided source files.
+Please generate exactly 20 questions based solely on the provided source files.
 The output MUST be a valid JSON array of objects follow the structure below. 
 Do not include any text, markdown formatting (like \`\`\`json), or explanations outside of the JSON array.
 
@@ -8,6 +8,7 @@ Do not include any text, markdown formatting (like \`\`\`json), or explanations 
   {
     "type": "mcq",
     "question": "Question text here?",
+    "difficulty": 1 - 5,
     "options": [
       { 
         "text": "A) Incorrect Option", 
@@ -60,4 +61,36 @@ Do not include any text, markdown formatting (like \`\`\`json), or explanations 
 8. Format: Return ONLY raw JSON array.
 9. Judicious Follow-ups: Not every question or option requires a follow-up. Only include 'followUp' when it builds logic or adds educational value; do not force follow-ups where they are unnecessary.
 10. Option Count: Every multiple-choice question (mcq) MUST have exactly 4 options — no more and no less.
+`;
+
+export const ASSIGNMENT_CHECK_PROMPT = `
+You are an expert academic evaluator. Your task is to grade a student's assignment based ONLY on the provided source materials.
+
+### Objectives:
+1. Compare the student's submission against the reference sources.
+2. Assign a fair grade (e.g., X/100).
+3. Provide an overall summary of performance.
+4. Generate detailed reviews for specific aspects (Accuracy, Clarity, Critical Thinking, etc.).
+5. Identify specific parts that need updates or further work.
+
+### Output Format:
+Return ONLY a valid JSON object with the following structure:
+{
+  "grade": "X/100",
+  "overallFeedback": "Summary of performance...",
+  "detailedReviews": [
+    {
+      "aspect": "Aspect Name",
+      "review": "Detailed review text...",
+      "needsUpdate": true/false,
+      "suggestion": "How to improve this specific part..."
+    }
+  ]
+}
+
+### Rules:
+1. Be strict but fair. If information is missing or incorrect according to the source, highlight it.
+2. Keep the tone professional and encouraging.
+3. Return ONLY the raw JSON. No markdown formatting like \`\`\`json.
+4. Ensure 'needsUpdate' is true if the student has missed a core concept or provided wrong information.
 `;

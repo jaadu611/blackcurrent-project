@@ -1,0 +1,7 @@
+[
+  { "answer": "B", "followUpAnswer": "Selected Second Kind based on definition." },
+  { "answer": "2", "followUpAnswer": "10" },
+  { "answer": "VOICE", "followUpAnswer": "VOICE_FOLLOWUP", "audioFile": "audio_q2.mp3", "followUpAudioFile": "audio_q2_f.mp3" },
+  { "answer": "A", "followUpAnswer": "Yes" },
+  { "answer": "VOICE", "followUpAnswer": "", "audioFile": "audio_q5.mp3" }
+]

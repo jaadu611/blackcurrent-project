@@ -21,6 +21,7 @@ const navigation = [
   { name: "Class", path: "/class", icon: Users },
   { name: "Quiz Materials", path: "/quiz-materials", icon: BookOpen },
   { name: "Viva Materials", path: "/viva-materials", icon: Volume2 },
+  { name: "Assignment Checker", path: "/assignments", icon: BookOpen },
 ];
 
 export default function DashboardLayout({

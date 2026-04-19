@@ -5,7 +5,11 @@ import Submission from "@/models/Submission";
 import Student from "@/models/Student";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { run as transcribeAudio } from "@/lib/assemblyAI";
+import { chromium } from "playwright";
+import { automateNotebookLM } from "@/lib/notebooklmAutomator";
+import { QUIZ_EVAL_PROMPT } from "@/lib/prompts";
 
 export async function POST(request: Request) {
     try {
@@ -53,19 +57,24 @@ export async function POST(request: Request) {
         }
 
         let totalScore = 0;
-        const processedAnswers = [];
+        const processedAnswers: any[] = [];
+        const transcriptionTasks: Promise<void>[] = [];
 
         for (let i = 0; i < quiz.questions.length; i++) {
             const q = quiz.questions[i];
             const userAnswerData = answers[i] || {};
-
-            // userAnswerData could be a string (legacy) or an object
             const userAnswer = typeof userAnswerData === 'string' ? userAnswerData : userAnswerData.answer;
             const followUpAnswer = userAnswerData.followUpAnswer;
 
+            // DETECT ROLL NUMBER COLLISION (Index Shift Bug)
+            if (i === 0 && String(userAnswer) === String(rollNumber)) {
+                console.warn(`[!!] POTENTIAL INDEX SHIFT DETECTED: Question 1 answer "${userAnswer}" matches Student Roll Number "${rollNumber}". Check client-side data unshifting.`);
+            }
+
             let isCorrect = false;
-            let transcript = "";
+            let transcript = (q.type === 'voice') ? "[Audio Transcribing...]" : "";
             let audioUrl = "";
+            let processedFollowUp = null;
 
             // Handle main question
             if (q.type === 'mcq') {
@@ -82,24 +91,28 @@ export async function POST(request: Request) {
             } else if (q.type === 'voice') {
                 const audioFile = formData.get(`audio_q${i}`) as File;
                 if (audioFile) {
+                    console.log(`[API submit] Audio received for Q${i + 1}: ${audioFile.name} (${audioFile.size} bytes)`);
                     const bytes = await audioFile.arrayBuffer();
                     const fileName = `${rollNumber}_q${i}_${Date.now()}.mp3`;
                     const filePath = path.join(uploadDir, fileName);
                     fs.writeFileSync(filePath, Buffer.from(bytes));
                     audioUrl = `/uploads/${fileName}`;
 
-                    // Transcribe
-                    transcript = await transcribeAudio(filePath) || "";
+                    // Set up parallel task with DIRECT object reference
+                    const idx = i;
+                    // We will update the object's property directly after it's pushed
+                } else {
+                    console.warn(`[API submit] Q${i + 1} is VOICE type but no audio file was sent (field: audio_q${i})`);
+                    transcript = "[No audio received]";
                 }
             }
 
             if (isCorrect) totalScore += (q.points || 10);
 
             // Handle follow-up
-            let processedFollowUp = null;
             if (q.followUp) {
                 let fIsCorrect = false;
-                let fTranscript = "";
+                let fTranscript = (q.followUp.type === 'voice') ? "[Audio Transcribing...]" : "";
                 let fAudioUrl = "";
 
                 if (q.followUp.type === 'mcq') {
@@ -115,18 +128,19 @@ export async function POST(request: Request) {
                 } else if (q.followUp.type === 'voice') {
                     const fAudioFile = formData.get(`audio_q${i}_f`) as File;
                     if (fAudioFile) {
+                        console.log(`[API submit] Follow-up audio received for Q${i + 1}: ${fAudioFile.name} (${fAudioFile.size} bytes)`);
                         const bytes = await fAudioFile.arrayBuffer();
                         const fileName = `${rollNumber}_q${i}_f_${Date.now()}.mp3`;
                         const filePath = path.join(uploadDir, fileName);
                         fs.writeFileSync(filePath, Buffer.from(bytes));
                         fAudioUrl = `/uploads/${fileName}`;
-
-                        // Transcribe
-                        fTranscript = await transcribeAudio(filePath) || "";
+                    } else {
+                        console.warn(`[API submit] Q${i + 1} has VOICE follow-up but no audio file was sent`);
+                        fTranscript = "[No audio received]";
                     }
                 }
 
-                if (fIsCorrect) totalScore += 5; // Fixed points for follow-up or use from schema
+                if (fIsCorrect) totalScore += 5;
 
                 processedFollowUp = {
                     userAnswer: followUpAnswer,
@@ -137,7 +151,7 @@ export async function POST(request: Request) {
                 };
             }
 
-            processedAnswers.push({
+            const currentAnswerObject = {
                 questionIndex: i,
                 type: q.type,
                 userAnswer,
@@ -145,7 +159,45 @@ export async function POST(request: Request) {
                 transcript,
                 audioUrl,
                 followUp: processedFollowUp
-            });
+            };
+            processedAnswers.push(currentAnswerObject);
+
+            // NOW start transcription tasks if needed, passing the direct object reference
+            if (q.type === 'voice' && audioUrl) {
+                const filePath = path.join(uploadDir, path.basename(audioUrl));
+                const task = (async () => {
+                    try {
+                        const result = await transcribeAudio(filePath);
+                        currentAnswerObject.transcript = result || "";
+                        console.log(`[API submit] Q${i + 1} Transcript ready: "${result}"`);
+                    } catch (e: any) {
+                        console.error(`[API submit] Q${i + 1} transcription error:`, e.message);
+                    }
+                })();
+                transcriptionTasks.push(task);
+            }
+
+            if (q.followUp?.type === 'voice' && processedFollowUp?.audioUrl) {
+                const fFilePath = path.join(uploadDir, path.basename(processedFollowUp.audioUrl));
+                const fTask = (async () => {
+                    try {
+                        const result = await transcribeAudio(fFilePath);
+                        if (currentAnswerObject.followUp) {
+                            currentAnswerObject.followUp.transcript = result || "";
+                        }
+                        console.log(`[API submit] Q${i + 1} Follow-up transcript ready: "${result}"`);
+                    } catch (e: any) {
+                        console.error(`[API submit] Q${i + 1} follow-up transcription error:`, e.message);
+                    }
+                })();
+                transcriptionTasks.push(fTask);
+            }
+        }
+
+        // Wait for all transcribing in parallel
+        if (transcriptionTasks.length > 0) {
+            console.log(`[API submit] Waiting for ${transcriptionTasks.length} parallel transcriptions...`);
+            await Promise.all(transcriptionTasks);
         }
 
         // Detailed Terminal Logging
@@ -193,11 +245,117 @@ export async function POST(request: Request) {
             totalQuestions: quiz.questions.length,
         });
 
+        // ── NEW: NotebookLM Evaluation ──
+        let aiFeedback = "";
+        let browser: any = null;
+
+        // COMPLETION GUARD: Only evaluate if the quiz is actually finished
+        const isFinished = Array.isArray(answers) && answers.length === quiz.questions.length;
+        console.log(`[API submit] Completion check: ${answers.length}/${quiz.questions.length} answers received. isFinished=${isFinished}`);
+
+        if (isFinished) {
+            const tempEvalDir = path.join(os.tmpdir(), `eval_${Date.now()}`);
+            fs.mkdirSync(tempEvalDir, { recursive: true });
+
+            try {
+                // FALLBACK: Prepare the source material as a TXT file just in case it needs to create a new notebook
+                if (quiz.rawContent) {
+                    fs.writeFileSync(path.join(tempEvalDir, "source_material.txt"), quiz.rawContent);
+                    console.log("[API submit] Prepared source_material.txt for potential new notebook creation.");
+                }
+
+                console.log(`[API submit] Starting NotebookLM evaluation for roll: ${rollNumber}`);
+
+                // 1. Prepare evaluation prompt
+                let evaluationPrompt = QUIZ_EVAL_PROMPT + "\n\n";
+                evaluationPrompt += `# STUDENT SUBMISSION REPORT\n`;
+                evaluationPrompt += `**Roll Number:** ${rollNumber}\n`;
+                evaluationPrompt += `**Quiz Title:** ${quiz.title}\n\n`;
+                evaluationPrompt += `--- \n\n`;
+
+                processedAnswers.forEach((ans, idx) => {
+                    const q = quiz.questions[idx];
+                    evaluationPrompt += `### Question ${idx + 1}: ${q.question}\n`;
+
+                    if (q?.type === 'mcq') {
+                        const correctOpt = q.options?.find((o: any) => o.isCorrect);
+                        evaluationPrompt += `- **Correct Answer:** ${correctOpt ? correctOpt.text : "N/A"}\n`;
+                    } else if (q?.type === 'numeric') {
+                        evaluationPrompt += `- **Correct Answer:** ${q.answer}\n`;
+                    }
+
+                    evaluationPrompt += `- **Student's Answer:** ${ans.userAnswer || "No answer provided"}\n`;
+                    if (ans.transcript && ans.transcript !== "[Audio Transcribing...]") {
+                        evaluationPrompt += `- **Student's Voice Transcript:** "${ans.transcript}"\n`;
+                    }
+
+                    // Show follow-up even if question text is missing (Legacy support)
+                    if (ans.followUp || (answers[idx] && answers[idx].followUpAnswer)) {
+                        const followUpText = q.followUp?.question || "(Question text not found in database)";
+                        const followUpAns = ans.followUp?.userAnswer || answers[idx]?.followUpAnswer || "No answer provided";
+
+                        evaluationPrompt += `\n**Follow-up Question:** ${followUpText}\n`;
+                        evaluationPrompt += `- **Student's Follow-up Answer:** ${followUpAns}\n`;
+
+                        if (ans.followUp?.transcript && ans.followUp.transcript !== "[Audio Transcribing...]") {
+                            evaluationPrompt += `- **Follow-up Voice Transcript:** "${ans.followUp.transcript}"\n`;
+                        }
+                    }
+                    evaluationPrompt += `\n---\n\n`;
+                });
+
+                // 2. Launch Browser
+                console.log("[API submit] Step 2: Connecting to browser instance...");
+                try {
+                    browser = await chromium.connectOverCDP("http://localhost:9222");
+                    console.log("[API submit] Connected to existing Brave instance on port 9222");
+                } catch {
+                    console.warn("[API submit] No CDP instance on 9222. Launching new browser...");
+                    const userDataDir = path.join(os.homedir(), ".playwright-notebooklm");
+                    browser = await chromium.launchPersistentContext(userDataDir, {
+                        headless: false,
+                        viewport: { width: 1280, height: 720 },
+                    });
+                }
+
+                const context = browser.contexts ? browser.contexts()[0] : (browser as any);
+                const page = await context.newPage();
+
+                // 3. Run NotebookLM Automation
+                const notebookToFind = "final test";
+                console.log(`[API submit] Step 3: Searching NotebookLM for notebook: "${notebookToFind}"`);
+
+                aiFeedback = await automateNotebookLM(
+                    page,
+                    tempEvalDir,
+                    evaluationPrompt,
+                    notebookToFind
+                );
+                console.log("[API submit] Step 4: AI response received from NotebookLM");
+
+                // 4. Extract score and save
+                let aiScoreMatched = aiFeedback.match(/Score:?\s*(\d+)/i);
+                submission.aiFeedback = aiFeedback;
+                submission.aiScore = aiScoreMatched ? parseInt(aiScoreMatched[1]) : 0;
+                await submission.save();
+
+                console.log(`[API submit] Evaluation complete for roll ${rollNumber}.`);
+
+            } catch (evalError: any) {
+                console.error("[API submit] AI Evaluation Error:", evalError.message);
+            } finally {
+                if (fs.existsSync(tempEvalDir)) fs.rmSync(tempEvalDir, { recursive: true, force: true });
+            }
+        } else {
+            console.log(`[API submit] Submission received mid-quiz (${answers.length}/${quiz.questions.length}). AI Evaluation skipped until final submission.`);
+        }
+
         const response = NextResponse.json(
             {
                 message: "Submission successful",
                 score: totalScore,
                 total: quiz.questions.length,
+                aiFeedback: aiFeedback || "Evaluation in progress or skipped"
             },
             { status: 201 }
         );

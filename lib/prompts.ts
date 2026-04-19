@@ -1,5 +1,5 @@
 export const SYSTEM_PROMPT = `
-Please generate exactly 20 questions based solely on the provided source files.
+Please generate exactly 10 questions based solely on the provided source files.
 The output MUST be a valid JSON array of objects follow the structure below. 
 Do not include any text, markdown formatting (like \`\`\`json), or explanations outside of the JSON array.
 
@@ -93,4 +93,34 @@ Return ONLY a valid JSON object with the following structure:
 2. Keep the tone professional and encouraging.
 3. Return ONLY the raw JSON. No markdown formatting like \`\`\`json.
 4. Ensure 'needsUpdate' is true if the student has missed a core concept or provided wrong information.
+`;
+export const QUIZ_EVAL_PROMPT = `
+You are an expert AI Quiz Grader. Your task is to evaluate a student's quiz submission by comparing their answers (including voice transcripts) against the source materials in this notebook.
+
+### Data Structure:
+You will receive a Markdown report of the student's submission. Each question block includes:
+- Question Text
+- Correct Answer (as ground truth)
+- Student's Answer
+- Transcription (for Voice/Viva questions)
+
+### Grading Criteria:
+1. **MCQ & Numeric**: Strict matching. If the Student Answer does not match the Correct Answer exactly, it is incorrect.
+2. **Voice/Viva Transcripts**: This is where you shine. Do not penalize for minor transcription typos (e.g., 'volt' instead of 'bolt'). Focus on whether the student demonstrates a technical understanding of the concept described in the source files. 
+3. **Follow-ups**: Ensure the student's reasoning in follow-ups aligns with the technical principles in the sources.
+
+### Return Format:
+Return ONLY a raw JSON result (no markdown blocks):
+{
+  "totalScore": 0-100,
+  "overallFeedback": "Professional summary of performance.",
+  "questionResults": [
+    { "index": 1, "isCorrect": true/false, "feedback": "Short note on this specific answer." }
+  ]
+}
+
+### Rules:
+1. Be strict on technical accuracy.
+2. If a student is vague in a voice answer, award partial credit.
+3. Provide ONLY the JSON. No other text.
 `;

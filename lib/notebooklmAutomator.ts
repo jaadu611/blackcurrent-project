@@ -8,86 +8,92 @@ export async function automateNotebookLM(
   prompt: string,
   notebookTitle: string,
 ): Promise<string> {
-  let url = page.url();
-  if (!url.includes("notebooklm.google.com")) {
-    await page.goto("https://notebooklm.google.com/", {
-      waitUntil: "domcontentloaded",
-      timeout: 45000,
-    });
-    await page.waitForTimeout(500);
-    url = page.url();
+  // Handle unexpected dialogs (e.g. "Stay or Leave" prompts)
+  page.on("dialog", (dialog) => {
+    console.log(`[NotebookLM] Dialog appeared: ${dialog.message()}. Dismissing...`);
+    dialog.dismiss().catch(() => { });
+  });
+
+  // ── NEW: Check existing tabs first to see if "final test" is already open ──
+  console.log(`[NotebookLM] Scanning existing tabs for: "${notebookTitle}"...`);
+  const allPages = page.context().pages();
+  let activePage = page;
+
+  for (const p of allPages) {
+    try {
+      const pUrl = p.url();
+      // Fast check: if it has /notebook/ it's a strong candidate
+      if (pUrl.includes("/notebook/")) {
+        const innerTitle = await p.evaluate(() => {
+          return (document.querySelector('.notebook-title-edit, .title-text, h2') as HTMLElement)?.innerText || "";
+        }).catch(() => "");
+
+        if (innerTitle.toLowerCase().includes(notebookTitle.toLowerCase())) {
+          console.log(`[NotebookLM] Found active tab for "${notebookTitle}". Using it.`);
+          activePage = p;
+          await activePage.bringToFront();
+          break;
+        }
+      }
+    } catch (err) { /* ignore stale pages */ }
   }
 
-  if (url.includes("/notebook/")) {
-    await page.goto("https://notebooklm.google.com/", {
+  let url = activePage.url();
+  if (!url.includes("notebooklm.google.com")) {
+    console.log(`[NotebookLM] No active tab found. Navigating to homepage...`);
+    await activePage.goto("https://notebooklm.google.com/", {
       waitUntil: "domcontentloaded",
-      timeout: 45000,
+      timeout: 30000,
     });
-    await page.waitForTimeout(500);
+    await activePage.waitForTimeout(500);
+    url = activePage.url();
   }
+
+  // From here on, we use targetPage
+  const targetPage = activePage;
 
   let notebookFound = false;
-  const matchHandle = await page.evaluateHandle(
+
+  // Quick check for the card on the homepage
+  console.log(`[NotebookLM] Searching homepage for "${notebookTitle}"...`);
+  const matchHandle = await targetPage.evaluateHandle(
     ({ title }: { title: string }) => {
-      const candidates = Array.from(
-        document.querySelectorAll(
-          "mat-card, [role='button'], a[href*='notebook'], .notebook-card, div.title, span.title",
-        ),
-      );
-      return (
-        candidates.find(
-          (el) => (el as HTMLElement).innerText?.trim() === title,
-        ) || null
-      );
+      const cards = Array.from(document.querySelectorAll("mat-card, [role='button'], a[href*='notebook'], .notebook-card, .notebook-item"));
+      const t = title.toLowerCase();
+      return cards.find((el) => {
+        const text = (el as HTMLElement).innerText?.toLowerCase() || "";
+        return text.includes(t);
+      }) || null;
     },
     { title: notebookTitle },
   );
 
   const matchedElement = matchHandle.asElement();
   if (matchedElement) {
-    const isLink = await matchedElement.evaluate(
-      (el) => el.tagName.toLowerCase() === "a",
-    );
-    if (isLink) {
-      const href = await matchedElement.evaluate(
-        (el) => (el as HTMLAnchorElement).href,
-      );
-      if (href) {
-        await page.goto(href, {
-          waitUntil: "domcontentloaded",
-          timeout: 20000,
-        });
-        notebookFound = true;
-      }
-    }
-
-    if (!notebookFound) {
-      await matchedElement.click({ force: true });
-      await page.waitForTimeout(1000);
-      try {
-        await page.waitForURL((u) => u.href.includes("/notebook/"), {
-          timeout: 15000,
-        });
-      } catch (_) {}
+    console.log(`[NotebookLM] Found notebook card. Clicking...`);
+    await matchedElement.click({ force: true });
+    try {
+      await targetPage.waitForURL((u) => u.href.includes("/notebook/"), { timeout: 10000 });
       notebookFound = true;
+    } catch (_) {
+      console.warn("[NotebookLM] Clicked card but URL didn't change. Proceeding to create new.");
     }
   }
 
   if (!notebookFound) {
-    const createBtn = page
+    console.log(`[NotebookLM] Notebook "${notebookTitle}" not found. Creating a NEW one...`);
+    const createBtn = targetPage
       .locator(
-        'button.create-new-button, [aria-label*="Create new notebook"], [aria-label*="New notebook"], .create-new-action-button, div:has-text("New notebook") > mat-icon, span:has-text("New notebook")',
+        'button.create-new-button, [aria-label*="Create new notebook"], [aria-label*="New notebook"], .create-new-action-button',
       )
       .first();
-    await createBtn.waitFor({ state: "visible", timeout: 20000 });
-    await createBtn.click({ force: true });
+    await createBtn.waitFor({ state: "visible", timeout: 10000 }).catch(() => { });
+    await createBtn.click({ force: true }).catch(() => { });
 
-    await page.waitForURL((u) => u.href.includes("/notebook/"), {
-      timeout: 30000,
-    });
-    await page.waitForTimeout(1500);
+    await targetPage.waitForURL((u) => u.href.includes("/notebook/"), { timeout: 20000 }).catch(() => { });
+    await targetPage.waitForTimeout(1000);
 
-    const titleEditTrigger = page
+    const titleEditTrigger = targetPage
       .locator(
         '[aria-label*="Rename notebook"], .notebook-title-edit, span:has-text("Untitled notebook"), h2:has-text("Untitled notebook")',
       )
@@ -95,10 +101,10 @@ export async function automateNotebookLM(
 
     if (await titleEditTrigger.isVisible().catch(() => false)) {
       await titleEditTrigger.click({ force: true });
-      await page.waitForTimeout(200);
+      await targetPage.waitForTimeout(200);
     }
 
-    const titleInput = page
+    const titleInput = targetPage
       .locator(
         'input[aria-label*="title"], input.title-input, textarea.title-input, input[value="Untitled notebook"]',
       )
@@ -106,13 +112,13 @@ export async function automateNotebookLM(
 
     if (await titleInput.isVisible({ timeout: 5000 }).catch(() => false)) {
       await titleInput.fill(notebookTitle);
-      await page.keyboard.press("Enter");
-      await page.waitForTimeout(300);
+      await targetPage.keyboard.press("Enter");
+      await targetPage.waitForTimeout(300);
     }
   }
 
   const getSourceCount = async () => {
-    return await page.evaluate(() => {
+    return await targetPage.evaluate(() => {
       const roots: (Element | Document | ShadowRoot)[] = [document.body];
       while (roots.length > 0) {
         const root = roots.shift()!;
@@ -161,7 +167,7 @@ export async function automateNotebookLM(
       let fileSize = 0;
       try {
         fileSize = fs.statSync(file).size;
-      } catch (_) {}
+      } catch (_) { }
       if (
         currentBatch.length > 0 &&
         (currentBatch.length >= BATCH_SIZE ||
@@ -179,10 +185,10 @@ export async function automateNotebookLM(
     for (const batch of batches) {
       if (batch.length === 0) continue;
 
-      const uploadIconBtn = page.locator(uploadIconBtnSelector).first();
+      const uploadIconBtn = targetPage.locator(uploadIconBtnSelector).first();
       const openModal = async () => {
         if (await uploadIconBtn.isVisible().catch(() => false)) return;
-        const addSourceBtn = page
+        const addSourceBtn = targetPage
           .locator(
             '.add-source-button, [aria-label="Add source"], button:has-text("Add source")',
           )
@@ -193,7 +199,7 @@ export async function automateNotebookLM(
           await addSourceBtn.click({ force: true });
           await uploadIconBtn
             .waitFor({ state: "visible", timeout: 8000 })
-            .catch(() => {});
+            .catch(() => { });
         }
       };
 
@@ -206,19 +212,19 @@ export async function automateNotebookLM(
         try {
           await uploadIconBtn.waitFor({ state: "visible", timeout: 5000 });
           await uploadIconBtn.scrollIntoViewIfNeeded();
-          await page.waitForTimeout(200);
+          await targetPage.waitForTimeout(200);
 
           const [fileChooser] = await Promise.all([
-            page.waitForEvent("filechooser", { timeout: 20000 }),
+            targetPage.waitForEvent("filechooser", { timeout: 20000 }),
             uploadIconBtn.click({ force: true, delay: 100 }),
           ]);
 
-          await page.waitForTimeout(200);
+          await targetPage.waitForTimeout(200);
           await fileChooser.setFiles(batch);
           fileChooserSuccess = true;
         } catch (err: any) {
           retries--;
-          await page.waitForTimeout(2000);
+          await targetPage.waitForTimeout(2000);
           await openModal();
         }
       }
@@ -227,17 +233,17 @@ export async function automateNotebookLM(
         break;
       }
 
-      await page.waitForTimeout(800);
+      await targetPage.waitForTimeout(800);
     }
 
     try {
-      const closeBtn = page
+      const closeBtn = targetPage
         .locator('button[aria-label="Close"], .close-button')
         .first();
       if (await closeBtn.isVisible().catch(() => false)) {
         await closeBtn.click({ force: true, timeout: 3000 });
       }
-    } catch {}
+    } catch { }
 
     const startWait = Date.now();
     const targetCount = initialCount + allFiles.length;
@@ -247,7 +253,7 @@ export async function automateNotebookLM(
       const currentCountRaw = await getSourceCount();
       const currentCount = parseCount(currentCountRaw);
 
-      const { nameMatchCount, isUploading } = await page.evaluate((files) => {
+      const { nameMatchCount, isUploading } = await targetPage.evaluate((files) => {
         let currentText = "";
         const roots: (Element | Document | ShadowRoot)[] = [document.body];
         while (roots.length > 0) {
@@ -291,28 +297,28 @@ export async function automateNotebookLM(
 
       if (allProcessed && !isUploading) {
         // Double check for any hidden progress bars before breaking
-        const hiddenSpinner = await page.evaluate(() => {
-           let found = false;
-           const roots: (Element | Document | ShadowRoot)[] = [document.body];
-           while(roots.length > 0) {
-             const r = roots.shift()!;
-             if ((r as HTMLElement).querySelector?.('mat-progress-spinner, [role="progressbar"], .progress-bar, .uploading-indicator')) return true;
-             const walker = document.createTreeWalker(r as Node, NodeFilter.SHOW_ELEMENT);
-             let n; while(n = walker.nextNode()) if((n as HTMLElement).shadowRoot) roots.push((n as HTMLElement).shadowRoot!);
-           }
-           return false;
+        const hiddenSpinner = await targetPage.evaluate(() => {
+          let found = false;
+          const roots: (Element | Document | ShadowRoot)[] = [document.body];
+          while (roots.length > 0) {
+            const r = roots.shift()!;
+            if ((r as HTMLElement).querySelector?.('mat-progress-spinner, [role="progressbar"], .progress-bar, .uploading-indicator')) return true;
+            const walker = document.createTreeWalker(r as Node, NodeFilter.SHOW_ELEMENT);
+            let n; while (n = walker.nextNode()) if ((n as HTMLElement).shadowRoot) roots.push((n as HTMLElement).shadowRoot!);
+          }
+          return false;
         });
         if (!hiddenSpinner) break;
       }
-      await page.waitForTimeout(2000);
+      await targetPage.waitForTimeout(2000);
     }
 
     if (allProcessed) {
-      await page.waitForTimeout(10000);
+      await targetPage.waitForTimeout(10000);
     }
   }
 
-  const existingSnippets: string[] = await page.evaluate(() => {
+  const existingSnippets: string[] = await targetPage.evaluate(() => {
     let found: HTMLElement[] = [];
     let roots: (Document | Element | ShadowRoot)[] = [document];
     while (roots.length > 0) {
@@ -343,7 +349,7 @@ export async function automateNotebookLM(
         }
         // Also check if it contains a copy button directly
         if (el.querySelector('button[aria-label*="Copy"], button[aria-label*="Save"]')) {
-           aiFound.push(el);
+          aiFound.push(el);
         }
       }
       const allElems = Array.from(root.querySelectorAll("*")) as HTMLElement[];
@@ -356,29 +362,29 @@ export async function automateNotebookLM(
 
   const inputSelector =
     'textarea[placeholder*="Ask"], .chat-input textarea, textarea[aria-label*="Query"]';
-  
+
   let inputFilled = false;
   for (let i = 0; i < 10; i++) {
     try {
-      await page.waitForSelector(inputSelector, { timeout: 10000 });
-      const input = page.locator(inputSelector).first();
+      await targetPage.waitForSelector(inputSelector, { timeout: 10000 });
+      const input = targetPage.locator(inputSelector).first();
       await input.click({ force: true });
-      await page.waitForTimeout(200);
+      await targetPage.waitForTimeout(200);
       await input.fill(prompt);
-      await page.waitForTimeout(200);
+      await targetPage.waitForTimeout(200);
       const val = await input.inputValue();
       if (val.length >= prompt.length * 0.9) {
-        await page.keyboard.press("Enter");
+        await targetPage.keyboard.press("Enter");
         inputFilled = true;
         break;
       }
     } catch (e) {
-      await page.waitForTimeout(2000);
+      await targetPage.waitForTimeout(2000);
     }
   }
-  
+
   if (!inputFilled) {
-     throw new Error("Failed to fill prompt into NotebookLM input.");
+    throw new Error("Failed to fill prompt into NotebookLM input.");
   }
 
   const startTime = Date.now();
@@ -387,7 +393,7 @@ export async function automateNotebookLM(
   const STABLE_POLLS_NEEDED = 2;
 
   while (Date.now() - startTime < 300000) {
-    const candidate = await page.evaluate<{
+    const candidate = await targetPage.evaluate<{
       text: string;
       isGenerating: boolean;
     } | null, string[]>((snapshot) => {
@@ -451,12 +457,12 @@ export async function automateNotebookLM(
         stableCount++;
         if (stableCount >= STABLE_POLLS_NEEDED) {
           try {
-            await page.bringToFront();
-            await page
+            await targetPage.bringToFront();
+            await targetPage
               .context()
               .grantPermissions(["clipboard-read", "clipboard-write"]);
 
-            const clickSuccess = await page.evaluate(() => {
+            const clickSuccess = await targetPage.evaluate(() => {
               let allBtns: HTMLElement[] = [];
               let roots: (Document | Element | ShadowRoot)[] = [document];
               while (roots.length > 0) {
@@ -480,8 +486,8 @@ export async function automateNotebookLM(
             });
 
             if (clickSuccess) {
-              await page.waitForTimeout(500);
-              const clipboardText = await page.evaluate(async () => {
+              await targetPage.waitForTimeout(500);
+              const clipboardText = await targetPage.evaluate(async () => {
                 try {
                   return await navigator.clipboard.readText();
                 } catch (e: any) {
@@ -493,14 +499,14 @@ export async function automateNotebookLM(
                 return clipboardText.trim();
               }
             }
-          } catch (err) {}
+          } catch (err) { }
         }
       } else {
         stableCount = 0;
         lastSeenLength = currentLength;
       }
     }
-    await page.waitForTimeout(1000);
+    await targetPage.waitForTimeout(1000);
   }
 
   throw new Error("Analysis timeout (5m)");

@@ -50,6 +50,12 @@ const SubmissionSchema = new Schema(
             type: Date,
             default: Date.now,
         },
+        aiFeedback: {
+            type: String,
+        },
+        aiScore: {
+            type: Number,
+        },
     },
     { timestamps: true },
 );

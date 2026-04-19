@@ -4,12 +4,12 @@ import Quiz from "@/models/Quiz";
 
 export async function GET(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         await connectToDatabase();
 
-        const { id } = params;
+        const { id } = await params;
         const quiz = await Quiz.findById(id);
 
         if (!quiz) {

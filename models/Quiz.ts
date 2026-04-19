@@ -15,6 +15,7 @@ const QuestionSchema = new Schema({
     difficulty: { type: Number, default: 5 }, // 1-10
     usageCount: { type: Number, default: 0 },
     lastUsedIndex: { type: Number, default: -1 },
+    followUp: { type: Schema.Types.Mixed }, // Adaptive follow-up question
 });
 
 const QuizSchema = new Schema(

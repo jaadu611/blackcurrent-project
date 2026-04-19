@@ -61,16 +61,20 @@ export async function POST(req: Request) {
     const context = browser.contexts ? browser.contexts()[0] : (browser as any);
     const page = await context.newPage();
 
-    // 3. Run Automation — tempDir now contains ALL uploaded PDFs
-    const notebookTitle = `Pool_${rollNumber}_${Date.now()}`;
+    // 3. Run Automation — Use a stable, accessible title
+    const notebookTitle = "final test";
+    console.log(`[API generate-mcq] Running NotebookLM automation with title: ${notebookTitle}`);
+
     const rawResult = await automateNotebookLM(
       page,
       tempDir,
       SYSTEM_PROMPT,
       notebookTitle,
     );
+    console.log("[API generate-mcq] Automation result received from NotebookLM");
 
     // 4. Parse JSON result
+    console.log("[API generate-mcq] Parsing AI response...");
     let questionsPool: any[] = [];
     try {
       // Clean the raw result: remove markdown blocks and whitespace
@@ -98,15 +102,18 @@ export async function POST(req: Request) {
           throw parseErr;
         }
       }
+      console.log(`[API generate-mcq] Successfully parsed ${questionsPool.length} questions`);
     } catch (e) {
       console.error("[API] JSON Parse Error. Raw result:", rawResult);
       throw new Error("AI returned invalid JSON format. Please try again.");
     }
 
     // 5. Save to MongoDB
+    console.log("[API generate-mcq] Saving quiz to MongoDB...");
     const newQuiz = await Quiz.create({
       teacherId: new (require("mongoose").Types.ObjectId)(),
       title: quizTitle,
+      materialName: notebookTitle,
       questions: questionsPool.map((q: any) => ({
         ...q,
         usageCount: 0,

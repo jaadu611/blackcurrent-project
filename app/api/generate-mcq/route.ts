@@ -61,8 +61,8 @@ export async function POST(req: Request) {
     const context = browser.contexts ? browser.contexts()[0] : (browser as any);
     const page = await context.newPage();
 
-    // 3. Run Automation — Use a stable, accessible title
-    const notebookTitle = "final test";
+    // 3. Run Automation — Use the dynamic title provided by the user
+    const notebookTitle = quizTitle;
     console.log(`[API generate-mcq] Running NotebookLM automation with title: ${notebookTitle}`);
 
     const rawResult = await automateNotebookLM(

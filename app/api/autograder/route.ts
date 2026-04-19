@@ -10,13 +10,15 @@ import { cookies } from "next/headers";
 
 export async function POST(req: Request) {
   const formData = await req.formData();
-  
+
   // Get Rubric Files (Max 9)
   const rubricFiles = formData.getAll("rubricFiles") as File[];
   // Get Student Files
   const studentFiles = formData.getAll("studentFiles") as File[];
-  // Custom Prompt
-  const customPrompt = (formData.get("prompt") as string) || "Grade these assignments based on the provided rubrics.";
+  // Instructions
+  const { ASSIGNMENT_CHECK_PROMPT } = require("@/lib/prompts");
+  const userPrompt = (formData.get("prompt") as string) || "";
+  const finalPrompt = `${ASSIGNMENT_CHECK_PROMPT}\n\n${userPrompt ? `ADDITIONAL INSTRUCTIONS:\n${userPrompt}` : ""}`;
   // Metadata
   const topic = (formData.get("topic") as string) || "General Assessment";
   const date = (formData.get("date") as string) || new Date().toISOString();
@@ -38,7 +40,7 @@ export async function POST(req: Request) {
 
   // Create a single shared temp directory for all files in this session
   const uploadDir = fs.mkdtempSync(path.join(os.tmpdir(), "autograder-"));
-  
+
   try {
     // Save Rubrics
     for (const file of rubricFiles) {
@@ -58,25 +60,25 @@ export async function POST(req: Request) {
     const page = await context.newPage();
 
     const notebookTitle = `Autograder: ${topic} (${date})`;
-    
+
     try {
       // Orchestrate NotebookLM
-      const result = await automateNotebookLM(page, uploadDir, customPrompt, notebookTitle);
-      
+      const result = await automateNotebookLM(page, uploadDir, finalPrompt, notebookTitle);
+
       // Save to History (Using the first student file as representative or a batch entry)
       await connectToDatabase();
       await GradingHistory.create({
         teacherId,
         studentName: `Batch: ${studentFiles.length} Students`,
         assignmentTitle: topic,
-        score: 0, 
+        score: 0,
         rawOutput: result,
       });
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         success: true,
         topic,
-        result 
+        result
       });
     } finally {
       await page.close();
